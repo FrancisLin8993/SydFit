@@ -5,6 +5,7 @@ import { formatLocalTime, isScheduledLocalTime } from "./scheduler.js";
 import { getWeather } from "./weather.js";
 
 async function runJob(config) {
+  console.log(`User input received: ${config.userPrompt}`)
   console.log(`[${new Date().toISOString()}] Fetching Mascot weather...`);
   const weather = await getWeather(config.scheduleTimezone);
 

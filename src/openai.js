@@ -1,6 +1,5 @@
 export async function generateClothingRecommendation(config, weather, fetcher = fetch) {
   const userInput = buildRecommendationInput(weather, config.userPrompt);
-  console.log(`User input received: ${userInput}`);
   const response = await fetcher("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
