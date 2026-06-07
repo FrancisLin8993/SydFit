@@ -1,4 +1,6 @@
 export async function generateClothingRecommendation(config, weather, fetcher = fetch) {
+  const userInput = buildRecommendationInput(weather, config.userPrompt);
+  console.log(`User input received: ${userInput}`);
   const response = await fetcher("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -9,7 +11,7 @@ export async function generateClothingRecommendation(config, weather, fetcher = 
       model: config.openaiModel,
       instructions:
         "You write concise, practical morning clothing recommendations for someone in Sydney. Mention layers, rain gear, sun protection, and footwear only when relevant. Keep the message under 450 characters and make it suitable for a phone push notification.",
-      input: buildRecommendationInput(weather, config.userPrompt),
+      input: userInput,
       max_output_tokens: 160
     })
   });
