@@ -1,7 +1,5 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI();
-
 const CF_WORKER_STREAM_URL = "transport-nsw-mcp-server.lfc1101.workers.dev/stream";
 
 async function fetchTfNSWStreamData(mode) {
@@ -42,11 +40,12 @@ async function fetchTfNSWStreamData(mode) {
 }
 
 export async function handleTrafficQuery(userPrompt, mode = "train") {
+  const client = new OpenAI();
   console.log(`🚗 [Traffic Agent] Retrieving [${mode}] real time alert...`);
   
   const rawAlerts = await fetchTfNSWStreamData(mode);
 
-  const response = await openai.chat.completions.create({
+  const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       { 
