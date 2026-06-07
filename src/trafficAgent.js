@@ -2,9 +2,9 @@ import OpenAI from "openai";
 
 const CF_WORKER_STREAM_URL = "https://transport-nsw-mcp-server.lfc1101.workers.dev/stream";
 
-async function fetchTfNSWStreamData(mode) {
+export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
   try {
-    const response = await fetch(CF_WORKER_STREAM_URL, {
+    const response = await fetcher(CF_WORKER_STREAM_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -35,18 +35,25 @@ async function fetchTfNSWStreamData(mode) {
     return cleanData;
   } catch (error) {
     console.error("❌ Fail to call Cloudflare TfNSW MCP Stream:", error);
-    return `Cannot retrieve traffic alert. (${error.message})`;
+    return `Transit data error: Cannot retrieve traffic alert. (${error.message})`;
   }
 }
 
-export async function handleTrafficQuery(userPrompt, mode = "train") {
-  const client = new OpenAI();
+export async function handleTrafficQuery(userPrompt, mode = "train", options = {}) {
+  const client = options.client || new OpenAI();
+  const fetcher = options.fetcher || fetch;
   console.log(`🚗 [Traffic Agent] Retrieving [${mode}] real time alert...`);
   
-  const rawAlerts = await fetchTfNSWStreamData(mode);
+  const rawAlerts = await fetchTfNSWStreamData(mode, fetcher);
 
   console.log(`alert response from TfNSW: `);
   console.log(JSON.stringify(rawAlerts));
+
+  const transitError = buildTransitErrorMessage(rawAlerts);
+
+  if (transitError) {
+    return transitError;
+  }
 
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
@@ -69,4 +76,26 @@ Code of Conduct:
   });
 
   return response.choices[0].message.content;
+}
+
+export function buildTransitErrorMessage(rawAlerts) {
+  if (!containsMcpError(rawAlerts)) {
+    return "";
+  }
+
+  return `Transit data error: ${summarizeMcpError(rawAlerts)}`;
+}
+
+export function containsMcpError(rawAlerts) {
+  return /\berrors?\b/i.test(String(rawAlerts || ""));
+}
+
+export function summarizeMcpError(rawAlerts) {
+  return String(rawAlerts || "")
+    .replace(/\[STATUS\].*?\n/g, "")
+    .replace(/\[RESULT_START\]\n?/g, "")
+    .replace(/\n?\[RESULT_END\]\n?/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 400);
 }
