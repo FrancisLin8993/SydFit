@@ -45,6 +45,9 @@ export async function handleTrafficQuery(userPrompt, mode = "train") {
   
   const rawAlerts = await fetchTfNSWStreamData(mode);
 
+  console.log(`alert response from TfNSW: `);
+  console.log(JSON.stringify(rawAlerts));
+
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
