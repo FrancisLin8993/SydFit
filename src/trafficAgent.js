@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-const CF_WORKER_STREAM_URL = "transport-nsw-mcp-server.lfc1101.workers.dev";
+const CF_WORKER_STREAM_URL = "https://transport-nsw-mcp-server.lfc1101.workers.dev";
 
 async function fetchTfNSWStreamData(mode) {
   try {
