@@ -21,10 +21,11 @@ function streamResponse(text) {
   };
 }
 
-test("containsMcpError detects MCP error messages", () => {
-  assert.equal(containsMcpError("Error: TfNSW API key missing"), true);
-  assert.equal(containsMcpError("server returned errors from upstream"), true);
+test("containsMcpError detects MCP system error tags explicitly", () => {
+  assert.equal(containsMcpError("Error: TfNSW API key missing"), false);
+  assert.equal(containsMcpError("server returned errors from upstream"), false);
   assert.equal(containsMcpError("[CRITICAL_ERROR] strict mode access failed"), true);
+  assert.equal(containsMcpError("[ERROR] Something went wrong in FastMCP"), true);
   assert.equal(containsMcpError("No current alerts"), false);
 });
 
@@ -34,7 +35,7 @@ test("buildTransitErrorMessage handles bracketed critical MCP errors", () => {
 
   assert.equal(
     buildTransitErrorMessage(rawError),
-    "Transit data error: [CRITICAL_ERROR] 'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them"
+    "Transit data error: 'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them"
   );
 });
 
@@ -46,9 +47,10 @@ test("summarizeMcpError strips stream markers and compacts whitespace", () => {
 });
 
 test("buildTransitErrorMessage formats transit section error", () => {
+  const rawError = "[ERROR] upstream unavailable";
   assert.equal(
-    buildTransitErrorMessage("Error: upstream unavailable"),
-    "Transit data error: Error: upstream unavailable"
+    buildTransitErrorMessage(rawError),
+    "Transit data error: upstream unavailable"
   );
 });
 
@@ -70,7 +72,14 @@ test("fetchTfNSWStreamData strips MCP stream wrapper", async () => {
   assert.equal(result, "No current alerts");
 });
 
-test("handleTrafficQuery bypasses OpenAI when MCP returns an error", async (t) => {
+test("fetchTfNSWStreamData falls back to safe text when stream is empty", async () => {
+  const fetcher = async () => streamResponse("[STATUS] running\n[RESULT_START]\n\n[RESULT_END]\n");
+
+  const result = await fetchTfNSWStreamData("train", fetcher);
+  assert.equal(result, "No active transport alerts for [train] right now. Everything is running smoothly.");
+});
+
+test("handleTrafficQuery bypasses OpenAI when MCP returns a systemic error tag", async (t) => {
   t.mock.method(console, "log", () => {});
 
   const client = {
@@ -82,13 +91,13 @@ test("handleTrafficQuery bypasses OpenAI when MCP returns an error", async (t) =
       }
     }
   };
-  const fetcher = async () => streamResponse("[RESULT_START]\nError: invalid TfNSW response\n[RESULT_END]\n");
+  const fetcher = async () => streamResponse("[RESULT_START]\n[ERROR] invalid TfNSW response\n[RESULT_END]\n");
 
   const result = await handleTrafficQuery("morning commute", "train", { client, fetcher });
-  assert.equal(result, "Transit data error: Error: invalid TfNSW response");
+  assert.equal(result, "Transit data error: invalid TfNSW response");
 });
 
-test("handleTrafficQuery uses OpenAI when MCP response has no error", async (t) => {
+test("handleTrafficQuery uses OpenAI when MCP response has no system error tags", async (t) => {
   t.mock.method(console, "log", () => {});
 
   let userContent = "";
@@ -102,9 +111,11 @@ test("handleTrafficQuery uses OpenAI when MCP response has no error", async (t) 
       }
     }
   };
-  const fetcher = async () => streamResponse("[RESULT_START]\nNo current alerts\n[RESULT_END]\n");
+  
+
+  const fetcher = async () => streamResponse("[RESULT_START]\nError: Trackwork on T1 Western Line\n[RESULT_END]\n");
 
   const result = await handleTrafficQuery("morning commute", "train", { client, fetcher });
   assert.equal(result, "Commute is smooth.");
-  assert.match(userContent, /No current alerts/);
+  assert.match(userContent, /Error: Trackwork on T1 Western Line/);
 });
