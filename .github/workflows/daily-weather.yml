@@ -40,10 +40,10 @@ jobs:
           fi
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.4-mini' }}
+          OPENAI_MODEL: 'gpt-5.4-mini'
           BARK_DEVICE_KEY: ${{ secrets.BARK_DEVICE_KEY }}
-          BARK_SERVER_URL: ${{ vars.BARK_SERVER_URL || 'https://api.day.app' }}
-          BARK_GROUP: ${{ vars.BARK_GROUP || 'Weather' }}
-          BARK_LEVEL: ${{ vars.BARK_LEVEL || 'active' }}
+          BARK_SERVER_URL: 'https://api.day.app'
+          BARK_GROUP: 'Weather'
+          BARK_LEVEL: 'active'
           SCHEDULE_TIMEZONE: Australia/Sydney
           USER_PROMPT: ${{ github.event.client_payload.prompt || '' }}
