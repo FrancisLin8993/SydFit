@@ -27,10 +27,15 @@ export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
       accumulatedText += chunk;
     }
 
-    const cleanData = accumulatedText
-      .replace(/\[STATUS\].*?\n/g, "")
-      .replace(/\[RESULT_START\]\n/, "")
-      .replace(/\n\[RESULT_END\]\n/, "");
+    let cleanData = accumulatedText
+      .replace(/\[STATUS\].*?(\r?\n|$)/g, "") 
+      .replace(/\[RESULT_START\]/g, "")       
+      .replace(/\[RESULT_END\]/g, "")         
+      .trim();                                
+
+    if (!cleanData) {
+      cleanData = `No active transport alerts for [${mode}] right now. Everything is running smoothly.`;
+    }
 
     return cleanData;
   } catch (error) {
@@ -46,11 +51,9 @@ export async function handleTrafficQuery(userPrompt, mode = "train", options = {
   
   const rawAlerts = await fetchTfNSWStreamData(mode, fetcher);
 
-  console.log(`alert response from TfNSW: `);
-  console.log(JSON.stringify(rawAlerts));
+  console.log(`[Traffic Agent] Alert content parsed:`, JSON.stringify(rawAlerts));
 
   const transitError = buildTransitErrorMessage(rawAlerts);
-
   if (transitError) {
     return transitError;
   }
@@ -64,7 +67,7 @@ export async function handleTrafficQuery(userPrompt, mode = "train", options = {
 Your task is to distil the provided raw Transport for NSW real-time alert data into an easy-to-understand commute briefing for the user.
 
 Code of Conduct:
-1. If the data indicates everything is normal, tell the user in a single sentence that today's commute is smooth and clear.
+1. If the data indicates everything is normal (e.g., no alerts found or explicitly states running smoothly), tell the user in a single sentence that today's commute is smooth and clear.
 2. If there are active alerts (e.g., delays, trackwork), clearly list the affected routes or the level of severity, and provide reasonable travel advice (e.g., suggesting switching to buses or leaving early).
 3. The response must be highly concise with no fluff, ensuring it is perfectly suited for reading in mobile Bark push notifications or Apple Shortcuts.` 
       },
@@ -82,19 +85,18 @@ export function buildTransitErrorMessage(rawAlerts) {
   if (!containsMcpError(rawAlerts)) {
     return "";
   }
-
   return `Transit data error: ${summarizeMcpError(rawAlerts)}`;
 }
 
 export function containsMcpError(rawAlerts) {
-  return /(^|[^a-z])(?:critical_)?errors?([^a-z]|$)/i.test(String(rawAlerts || ""));
+  return /\[ERROR\]|\[CRITICAL_ERROR\]/i.test(String(rawAlerts || ""));
 }
 
 export function summarizeMcpError(rawAlerts) {
   return String(rawAlerts || "")
-    .replace(/\[STATUS\].*?\n/g, "")
-    .replace(/\[RESULT_START\]\n?/g, "")
-    .replace(/\n?\[RESULT_END\]\n?/g, "")
+    .replace(/\[STATUS\].*?(\r?\n|$)/g, "")
+    .replace(/\[RESULT_START\]/g, "")
+    .replace(/\[RESULT_END\]/g, "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 400);
