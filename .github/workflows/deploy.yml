@@ -1,4 +1,4 @@
-name: Daily weather notification
+name: SydFit Personal assistant
 
 on:
   schedule:
