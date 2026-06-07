@@ -31,7 +31,7 @@ jobs:
 
       - name: Send notification
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "push" ]; then
             node src/index.js --force
           else
             node src/index.js
