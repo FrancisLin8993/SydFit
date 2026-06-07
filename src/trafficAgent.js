@@ -87,7 +87,7 @@ export function buildTransitErrorMessage(rawAlerts) {
 }
 
 export function containsMcpError(rawAlerts) {
-  return /\berrors?\b/i.test(String(rawAlerts || ""));
+  return /(^|[^a-z])(?:critical_)?errors?([^a-z]|$)/i.test(String(rawAlerts || ""));
 }
 
 export function summarizeMcpError(rawAlerts) {

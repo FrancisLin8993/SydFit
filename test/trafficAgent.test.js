@@ -24,7 +24,18 @@ function streamResponse(text) {
 test("containsMcpError detects MCP error messages", () => {
   assert.equal(containsMcpError("Error: TfNSW API key missing"), true);
   assert.equal(containsMcpError("server returned errors from upstream"), true);
+  assert.equal(containsMcpError("[CRITICAL_ERROR] strict mode access failed"), true);
   assert.equal(containsMcpError("No current alerts"), false);
+});
+
+test("buildTransitErrorMessage handles bracketed critical MCP errors", () => {
+  const rawError =
+    "[CRITICAL_ERROR] 'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them\n";
+
+  assert.equal(
+    buildTransitErrorMessage(rawError),
+    "Transit data error: [CRITICAL_ERROR] 'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them"
+  );
 });
 
 test("summarizeMcpError strips stream markers and compacts whitespace", () => {
