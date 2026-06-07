@@ -1,6 +1,6 @@
-# SydFit Weather Bark
+# SydFit
 
-Small Node.js service that checks the weather in Mascot, NSW, asks the OpenAI Responses API for a clothing recommendation, and sends it to an iPhone using Bark.
+Small Node.js service that checks local weather, asks the OpenAI Responses API for a clothing recommendation, and sends it to an iPhone using Bark.
 
 ## Setup
 
