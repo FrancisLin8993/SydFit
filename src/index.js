@@ -5,9 +5,10 @@ import { formatLocalTime, isScheduledLocalTime } from "./scheduler.js";
 import { getWeather } from "./weather.js";
 import { handleTrafficQuery } from "./trafficAgent.js";
 
-async function handleMobileRequest(config, mobilePrompt) {
-  console.log(`[Router] Detected mobile real-time request: "${mobilePrompt}"`);
-  const promptLower = mobilePrompt.toLowerCase();
+async function handleMobileRequest(config) {
+  const prompt = config.userPrompt
+  console.log(`[Router] Detected mobile real-time request: "${prompt}"`);
+  const promptLower = prompt.toLowerCase();
   
   let aiReply = "";
   let pushTitle = "💬 SydFit Assistant";
@@ -15,11 +16,11 @@ async function handleMobileRequest(config, mobilePrompt) {
 
 
   if (promptLower.includes("train")) {
-    aiReply = await handleTrafficQuery(mobilePrompt, "train");
+    aiReply = await handleTrafficQuery(prompt, "train");
     pushTitle = "🚗 Sydney Traffic Alert";
     pushSubtitle = "Train Network Status";
   } else if (promptLower.includes("lightrail")) {
-    aiReply = await handleTrafficQuery(mobilePrompt, "lightrail");
+    aiReply = await handleTrafficQuery(prompt, "lightrail");
     pushTitle = "🚊 Sydney Traffic Alert";
     pushSubtitle = "Light Rail Status";
   } else {
@@ -74,24 +75,9 @@ async function runScheduledJob(config) {
 
 async function main() {
   const config = loadConfig();
-  
-  let isMobileRequest = false;
-  let mobilePrompt = "";
 
-  if (process.env.GITHUB_CONTEXT) {
-    try {
-      const githubContext = JSON.parse(process.env.GITHUB_CONTEXT);
-      if (githubContext.event_name === "repository_dispatch") {
-        isMobileRequest = true;
-        mobilePrompt = githubContext.event?.client_payload?.prompt || "";
-      }
-    } catch (e) {
-      console.error("Failed to parse GITHUB_CONTEXT:", e);
-    }
-  }
-
-  if (isMobileRequest && mobilePrompt) {
-    await handleMobileRequest(config, mobilePrompt);
+  if (config.userPrompt !== '') {
+    await handleMobileRequest(config);
   } else {
     const force = process.argv.includes("--force") || config.runOnStart;
     
