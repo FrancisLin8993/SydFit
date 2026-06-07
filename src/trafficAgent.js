@@ -2,7 +2,7 @@ import { OpenAI } from "openai";
 
 const openai = new OpenAI();
 
-const CF_WORKER_STREAM_URL = "https://sydney-transport-stream-server.你的用户名.workers.dev/stream";
+const CF_WORKER_STREAM_URL = "transport-nsw-mcp-server.lfc1101.workers.dev/stream";
 
 async function fetchTfNSWStreamData(mode) {
   try {
