@@ -5,7 +5,7 @@ const MASCOT_COORDINATES = {
   longitude: 151.193
 };
 
-export async function getMascotWeather(timezone = "Australia/Sydney", fetcher = fetch) {
+export async function getWeather(timezone = "Australia/Sydney", fetcher = fetch) {
   const params = new URLSearchParams({
     latitude: String(MASCOT_COORDINATES.latitude),
     longitude: String(MASCOT_COORDINATES.longitude),

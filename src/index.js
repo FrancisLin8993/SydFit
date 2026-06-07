@@ -2,11 +2,11 @@ import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
 import { generateClothingRecommendation } from "./openai.js";
 import { formatLocalTime, isScheduledLocalTime } from "./scheduler.js";
-import { getMascotWeather } from "./weather.js";
+import { getWeather } from "./weather.js";
 
 async function runJob(config) {
   console.log(`[${new Date().toISOString()}] Fetching Mascot weather...`);
-  const weather = await getMascotWeather(config.scheduleTimezone);
+  const weather = await getWeather(config.scheduleTimezone);
 
   console.log(`[${new Date().toISOString()}] Generating clothing recommendation...`);
   const recommendation = await generateClothingRecommendation(config, weather);

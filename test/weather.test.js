@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { first, getMascotWeather, normalizeWeather } from "../src/weather.js";
+import { first, getWeather, normalizeWeather } from "../src/weather.js";
 
 const openMeteoPayload = {
   current: {
@@ -70,7 +70,7 @@ test("getMascotWeather requests Mascot forecast and normalizes response", async 
     };
   };
 
-  const weather = await getMascotWeather("Australia/Sydney", fetcher);
+  const weather = await getWeather("Australia/Sydney", fetcher);
 
   assert.equal(requestedUrl.origin, "https://api.open-meteo.com");
   assert.equal(requestedUrl.pathname, "/v1/forecast");
@@ -88,7 +88,7 @@ test("getMascotWeather throws on failed weather response", async () => {
   });
 
   await assert.rejects(
-    () => getMascotWeather("Australia/Sydney", fetcher),
+    () => getWeather("Australia/Sydney", fetcher),
     /Open-Meteo request failed: 503 Service Unavailable/
   );
 });
