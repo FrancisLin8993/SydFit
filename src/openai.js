@@ -9,7 +9,7 @@ export async function generateClothingRecommendation(config, weather, fetcher = 
       model: config.openaiModel,
       instructions:
         "You write concise, practical morning clothing recommendations for someone in Sydney. Mention layers, rain gear, sun protection, and footwear only when relevant. Keep the message under 450 characters and make it suitable for a phone push notification.",
-      input: `Create today's clothing recommendation from this weather JSON:\n${JSON.stringify(weather, null, 2)}`,
+      input: buildRecommendationInput(weather, config.userPrompt),
       max_output_tokens: 160
     })
   });
@@ -27,6 +27,19 @@ export async function generateClothingRecommendation(config, weather, fetcher = 
   }
 
   return text.trim();
+}
+
+export function buildRecommendationInput(weather, userPrompt = "") {
+  const parts = [`Create today's clothing recommendation from this weather JSON:\n${JSON.stringify(weather, null, 2)}`];
+  const trimmedPrompt = userPrompt.trim();
+
+  if (trimmedPrompt) {
+    parts.push(
+      `User context or request from iPhone Shortcut:\n${trimmedPrompt}\nUse this context when deciding what to recommend.`
+    );
+  }
+
+  return parts.join("\n\n");
 }
 
 export function extractOutputText(response) {

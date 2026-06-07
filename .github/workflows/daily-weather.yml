@@ -46,3 +46,4 @@ jobs:
           BARK_GROUP: ${{ vars.BARK_GROUP || 'Weather' }}
           BARK_LEVEL: ${{ vars.BARK_LEVEL || 'active' }}
           SCHEDULE_TIMEZONE: Australia/Sydney
+          USER_PROMPT: ${{ github.event.client_payload.prompt || '' }}

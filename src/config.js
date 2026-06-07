@@ -21,6 +21,7 @@ export function loadConfigFromEnv(env) {
     barkGroup: env.BARK_GROUP || "Weather",
     barkLevel: env.BARK_LEVEL || "active",
     scheduleTimezone: env.SCHEDULE_TIMEZONE || "Australia/Sydney",
+    userPrompt: (env.USER_PROMPT || "").trim(),
     runOnStart: env.RUN_ON_START === "true"
   };
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { extractOutputText, generateClothingRecommendation } from "../src/openai.js";
+import { buildRecommendationInput, extractOutputText, generateClothingRecommendation } from "../src/openai.js";
 
 const config = {
   openaiApiKey: "openai-key",
@@ -49,6 +49,28 @@ test("generateClothingRecommendation sends Responses API request and trims text"
   assert.equal(request.body.model, "gpt-5.4-mini");
   assert.match(request.body.input, /Clear sky/);
   assert.equal(recommendation, "Light jacket and sneakers.");
+});
+
+test("generateClothingRecommendation includes optional user prompt", async () => {
+  let requestBody;
+  const fetcher = async (url, options) => {
+    requestBody = JSON.parse(options.body);
+    return {
+      ok: true,
+      json: async () => ({ output_text: "Wear office layers." })
+    };
+  };
+
+  await generateClothingRecommendation({ ...config, userPrompt: "office day, dinner after work" }, {}, fetcher);
+
+  assert.match(requestBody.input, /User context or request from iPhone Shortcut/);
+  assert.match(requestBody.input, /office day, dinner after work/);
+});
+
+test("buildRecommendationInput omits empty user prompt", () => {
+  const input = buildRecommendationInput({ condition: "Clear sky" }, "   ");
+  assert.match(input, /Clear sky/);
+  assert.doesNotMatch(input, /User context or request/);
 });
 
 test("generateClothingRecommendation throws on failed OpenAI response", async () => {

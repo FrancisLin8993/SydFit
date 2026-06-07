@@ -18,6 +18,7 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     barkGroup: "Weather",
     barkLevel: "active",
     scheduleTimezone: "Australia/Sydney",
+    userPrompt: "",
     runOnStart: false
   });
 });
@@ -30,6 +31,7 @@ test("loadConfigFromEnv uses optional overrides", () => {
     BARK_GROUP: "Morning",
     BARK_LEVEL: "timeSensitive",
     SCHEDULE_TIMEZONE: "Pacific/Auckland",
+    USER_PROMPT: "  office day  ",
     RUN_ON_START: "true"
   });
 
@@ -37,6 +39,7 @@ test("loadConfigFromEnv uses optional overrides", () => {
   assert.equal(config.barkGroup, "Morning");
   assert.equal(config.barkLevel, "timeSensitive");
   assert.equal(config.scheduleTimezone, "Pacific/Auckland");
+  assert.equal(config.userPrompt, "office day");
   assert.equal(config.runOnStart, true);
 });
 
