@@ -9,6 +9,8 @@ on:
     - cron: "0 21 * * *"
   workflow_dispatch:
   push:
+  repository_dispatch:
+    types: [mobile_prompt]
 
 jobs:
   notify:
@@ -31,7 +33,7 @@ jobs:
 
       - name: Send notification
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "push" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             node src/index.js --force
           else
             node src/index.js
