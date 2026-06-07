@@ -35,7 +35,7 @@ test("buildTransitErrorMessage handles bracketed critical MCP errors", () => {
 
   assert.equal(
     buildTransitErrorMessage(rawError),
-    "Transit data error: 'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them"
+    "Transit data error: [CRITICAL_ERROR] 'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them"
   );
 });
 
@@ -50,7 +50,7 @@ test("buildTransitErrorMessage formats transit section error", () => {
   const rawError = "[ERROR] upstream unavailable";
   assert.equal(
     buildTransitErrorMessage(rawError),
-    "Transit data error: upstream unavailable"
+    "Transit data error: [ERROR] upstream unavailable"
   );
 });
 
@@ -94,7 +94,7 @@ test("handleTrafficQuery bypasses OpenAI when MCP returns a systemic error tag",
   const fetcher = async () => streamResponse("[RESULT_START]\n[ERROR] invalid TfNSW response\n[RESULT_END]\n");
 
   const result = await handleTrafficQuery("morning commute", "train", { client, fetcher });
-  assert.equal(result, "Transit data error: invalid TfNSW response");
+  assert.equal(result, "Transit data error: [ERROR] invalid TfNSW response");
 });
 
 test("handleTrafficQuery uses OpenAI when MCP response has no system error tags", async (t) => {
