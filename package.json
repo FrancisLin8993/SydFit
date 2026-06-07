@@ -12,5 +12,8 @@
     "run-once": "node --env-file=.env src/index.js --force",
     "check": "node --check src/index.js && node --check src/config.js && node --check src/weather.js && node --check src/openai.js && node --check src/bark.js && node --check src/scheduler.js",
     "test": "node --test"
+  },
+  "dependencies": {
+    "openai": "^6.42.0"
   }
 }
