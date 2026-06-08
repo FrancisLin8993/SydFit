@@ -9,34 +9,37 @@ export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         method: "get_sydney_transport_alerts",
-        arguments: { mode: mode } 
+        arguments: { mode: mode }
       })
     });
-
+ 
     if (!response.ok) throw new Error(`HTTP Error. Status code: ${response.status}`);
-
+ 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let accumulatedText = "";
-
+ 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      
-      const chunk = decoder.decode(value, { stream: true });
-      accumulatedText += chunk;
+      accumulatedText += decoder.decode(value, { stream: true });
     }
-
-    let cleanData = accumulatedText
-      .replace(/\[STATUS\].*?(\r?\n|$)/g, "") 
-      .replace(/\[RESULT_START\]/g, "")       
-      .replace(/\[RESULT_END\]/g, "")         
-      .trim();                                
-
+ 
+    const rawText = accumulatedText
+      .split("\n")
+      .map(line => line.startsWith("data: ") ? line.slice(6) : line)
+      .join("\n");
+ 
+    let cleanData = rawText
+      .replace(/\[STATUS\].*?(\r?\n|$)/g, "")
+      .replace(/\[RESULT_START\]/g, "")
+      .replace(/\[RESULT_END\]/g, "")
+      .trim();
+ 
     if (!cleanData) {
       cleanData = `No active transport alerts for [${mode}] right now. Everything is running smoothly.`;
     }
-
+ 
     return cleanData;
   } catch (error) {
     console.error("❌ Fail to call Cloudflare TfNSW MCP Stream:", error);
