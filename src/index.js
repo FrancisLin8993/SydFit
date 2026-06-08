@@ -6,14 +6,13 @@ import { getWeather } from "./weather.js";
 import { handleTrafficQuery } from "./trafficAgent.js";
 
 async function handleMobileRequest(config) {
-  const prompt = config.userPrompt
+  const prompt = config.userPrompt;
   console.log(`[Router] Detected mobile real-time request: "${prompt}"`);
   const promptLower = prompt.toLowerCase();
-  
+
   let aiReply = "";
   let pushTitle = "💬 SydFit Assistant";
   let pushSubtitle = "Real-time Query";
-
 
   if (promptLower.includes("train")) {
     aiReply = await handleTrafficQuery(prompt, "train");
@@ -34,41 +33,46 @@ async function handleMobileRequest(config) {
   await sendBarkNotification(config, {
     title: pushTitle,
     subtitle: pushSubtitle,
-    body: aiReply
+    body: aiReply,
   });
 }
-
 
 async function runScheduledJob(config) {
   console.log(`⏰ [${new Date().toISOString()}] Executing Scheduled Daily Briefing Job...`);
 
   try {
     console.log(`🚀 [Router] Launching Weather and Traffic Agents concurrently...`);
-    
+
     const [weather, trafficReport] = await Promise.all([
       getWeather(config.scheduleTimezone),
-      handleTrafficQuery("Check if there are any major delays or trackwork for morning commute", "all") // 晨报全网扫描
+      handleTrafficQuery("Check if there are any major delays or trackwork for morning commute", "all"),
     ]);
 
     const clothingRecommendation = await generateClothingRecommendation(config, weather);
+    const weatherSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
 
+    console.log(`[${new Date().toISOString()}] Sending morning Bark notifications...`);
 
-    const dailyBriefing = `☀️【Today's Outfit】\n${clothingRecommendation}\n\n⚠️【Transit Alerts】\n${trafficReport}`;
-    const subtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
-
-    console.log(`[${new Date().toISOString()}] Sending aggregated morning Bark notification...`);
-    await sendBarkNotification(config, {
-      title: "🇦🇺 Good Morning Sydney",
-      subtitle,
-      body: dailyBriefing
-    });
+    // Send outfit and transit alerts as two separate notifications concurrently
+    await Promise.all([
+      sendBarkNotification(config, {
+        title: "☀️ Today's Outfit",
+        subtitle: weatherSubtitle,
+        body: clothingRecommendation,
+      }),
+      sendBarkNotification(config, {
+        title: "🚆 Transport Alerts",
+        subtitle: "Morning Commute",
+        body: trafficReport,
+      }),
+    ]);
 
   } catch (error) {
     console.error("❌ Scheduled Job Failed:", error);
     await sendBarkNotification(config, {
       title: "❌ SydFit Error",
       subtitle: "Scheduled Job Exception",
-      body: error.message
+      body: error.message,
     });
   }
 }
@@ -76,18 +80,18 @@ async function runScheduledJob(config) {
 async function main() {
   const config = loadConfig();
 
-  if (config.userPrompt !== '') {
+  if (config.userPrompt !== "") {
     await handleMobileRequest(config);
   } else {
     const force = process.argv.includes("--force") || config.runOnStart;
-    
+
     if (!force && !isScheduledLocalTime({ timezone: config.scheduleTimezone, hour: 7, minute: 0 })) {
       console.log(
         `Skipping notification. Local time is ${formatLocalTime(new Date(), config.scheduleTimezone)}, not 7:00 AM.`
       );
       return;
     }
-    
+
     await runScheduledJob(config);
   }
 
