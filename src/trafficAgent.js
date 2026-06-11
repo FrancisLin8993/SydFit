@@ -86,7 +86,7 @@ Code of Conduct:
 
 export function buildTransitErrorMessage(rawAlerts) {
   if (!containsMcpError(rawAlerts)) return "";
-  return `⚠️ Transit data error:\n${summarizeMcpError(rawAlerts)}`;
+  return `Transit data error: ${summarizeMcpError(rawAlerts)}`;
 }
 
 export function containsMcpError(rawAlerts) {
