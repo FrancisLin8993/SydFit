@@ -1,6 +1,12 @@
-export function isScheduledLocalTime({ date = new Date(), timezone, hour }) {
+export function isScheduledLocalTime({ date = new Date(), timezone, hour, toleranceMinutes = 0 }) {
   const now = getTimeParts(date, timezone);
-  return now.hour === hour;
+  const currentTotalMinutes = now.hour * 60 + now.minute;
+  const scheduledTotalMinutes = hour * 60;
+
+  return (
+    currentTotalMinutes >= scheduledTotalMinutes - toleranceMinutes &&
+    currentTotalMinutes < scheduledTotalMinutes + 60 // keep the original 1-hour window end
+  );
 }
 
 export function formatLocalTime(date = new Date(), timezone) {

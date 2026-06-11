@@ -101,12 +101,12 @@ async function main() {
   } else {
     const force = process.argv.includes("--force") || config.runOnStart;
 
-    if (!force && !isScheduledLocalTime({ timezone: config.scheduleTimezone, hour: 7 })) {
-      console.log(
-        `Skipping notification. Local time is ${formatLocalTime(new Date(), config.scheduleTimezone)}, not within 7 AM hour.`
-      );
-      return;
-    }
+  if (!force && !isScheduledLocalTime({ timezone: config.scheduleTimezone, hour: 7, toleranceMinutes: 90 })) {
+    console.log(
+      `Skipping notification. Local time is ${formatLocalTime(new Date(), config.scheduleTimezone)}, not within window for 7 AM.`
+    );
+  return;
+}
 
     await runScheduledJob(config);
   }
