@@ -53,7 +53,6 @@ async function runScheduledJob(config) {
 
     console.log(`[${new Date().toISOString()}] Sending morning Bark notifications...`);
 
-    // Send outfit and transit alerts as two separate notifications concurrently
     await Promise.all([
       sendBarkNotification(config, {
         title: "☀️ Today's Outfit",
@@ -85,9 +84,9 @@ async function main() {
   } else {
     const force = process.argv.includes("--force") || config.runOnStart;
 
-    if (!force && !isScheduledLocalTime({ timezone: config.scheduleTimezone, hour: 7, minute: 0 })) {
+    if (!force && !isScheduledLocalTime({ timezone: config.scheduleTimezone, hour: 7 })) {
       console.log(
-        `Skipping notification. Local time is ${formatLocalTime(new Date(), config.scheduleTimezone)}, not 7:00 AM.`
+        `Skipping notification. Local time is ${formatLocalTime(new Date(), config.scheduleTimezone)}, not within 7 AM hour.`
       );
       return;
     }

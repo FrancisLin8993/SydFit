@@ -1,13 +1,13 @@
-export function isScheduledLocalTime({ date = new Date(), timezone, hour, minute }) {
+export function isScheduledLocalTime({ date = new Date(), timezone, hour }) {
   const now = getTimeParts(date, timezone);
-  return now.hour === hour && now.minute === minute;
+  return now.hour === hour;
 }
 
 export function formatLocalTime(date = new Date(), timezone) {
   return new Intl.DateTimeFormat("en-AU", {
     timeZone: timezone,
     dateStyle: "full",
-    timeStyle: "long"
+    timeStyle: "long",
   }).format(date);
 }
 
@@ -19,7 +19,7 @@ function getTimeParts(date, timezone) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false
+    hour12: false,
   }).formatToParts(date);
 
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
@@ -29,6 +29,6 @@ function getTimeParts(date, timezone) {
     month: values.month,
     day: values.day,
     hour: Number(values.hour),
-    minute: Number(values.minute)
+    minute: Number(values.minute),
   };
 }
