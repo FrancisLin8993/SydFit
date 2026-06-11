@@ -84,10 +84,10 @@ async function runScheduledJob(config) {
     await Promise.all(notifications);
 
   } catch (error) {
-    console.error("❌ Scheduled Job Failed:", error);
+    console.error("❌ Job Failed:", error);
     await sendBarkNotification(config, {
       title: "❌ SydFit Error",
-      subtitle: "Scheduled Job Exception",
+      subtitle: "Job Exception",
       body: error.message,
     });
   }
