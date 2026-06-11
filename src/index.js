@@ -3,7 +3,7 @@ import { loadConfig } from "./config.js";
 import { generateClothingRecommendation } from "./openai.js";
 import { formatLocalTime, isScheduledLocalTime } from "./scheduler.js";
 import { getWeather } from "./weather.js";
-import { handleTrafficQuery } from "./trafficAgent.js";
+import { handleTrafficQuery, buildTransitErrorMessage } from "./trafficAgent.js";
 
 async function handleMobileRequest(config) {
   const prompt = config.userPrompt;
@@ -48,23 +48,40 @@ async function runScheduledJob(config) {
       handleTrafficQuery("Check if there are any major delays or trackwork for morning commute", "all"),
     ]);
 
+    const trafficError = buildTransitErrorMessage(trafficReport);
+    if (trafficError) {
+      console.error(`❌ Traffic agent returned an error: ${trafficReport}`);
+      await sendBarkNotification(config, {
+        title: "❌ Transit Data Error",
+        subtitle: "MCP Server / TfNSW API",
+        body: trafficError,
+      });
+    }
+
     const clothingRecommendation = await generateClothingRecommendation(config, weather);
     const weatherSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
 
     console.log(`[${new Date().toISOString()}] Sending morning Bark notifications...`);
 
-    await Promise.all([
+    const notifications = [
       sendBarkNotification(config, {
         title: "☀️ Today's Outfit",
         subtitle: weatherSubtitle,
         body: clothingRecommendation,
       }),
-      sendBarkNotification(config, {
-        title: "🚆 Transport Alerts",
-        subtitle: "Morning Commute",
-        body: trafficReport,
-      }),
-    ]);
+    ];
+
+    if (!trafficError) {
+      notifications.push(
+        sendBarkNotification(config, {
+          title: "🚆 Transport Alerts",
+          subtitle: "Morning Commute",
+          body: trafficReport,
+        })
+      );
+    }
+
+    await Promise.all(notifications);
 
   } catch (error) {
     console.error("❌ Scheduled Job Failed:", error);
