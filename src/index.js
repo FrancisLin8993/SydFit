@@ -45,7 +45,7 @@ async function runScheduledJob(config) {
 
     const [weather, trafficReport] = await Promise.all([
       getWeather(config.scheduleTimezone),
-      handleTrafficQuery("Check if there are any major delays or trackwork for morning commute", "all"),
+      handleTrafficQuery("Check if there are any major delays or trackwork for morning commute", "train"),
     ]);
 
     const trafficError = buildTransitErrorMessage(trafficReport);
