@@ -50,3 +50,4 @@ jobs:
           BARK_LEVEL: 'active'
           SCHEDULE_TIMEZONE: Australia/Sydney
           USER_PROMPT: ${{ github.event.client_payload.prompt || '' }}
+          MCP_SERVER_URL: ${{ secrets.MCP_SERVER_URL }}
