@@ -34,7 +34,7 @@ export async function addFeedbackToMemory(config, text) {
  */
 export async function getRelevantMemories(config, query) {
   try {
-if (!config.mem0ApiUrl) return "";
+    if (!config.mem0ApiUrl) return "";
     
     const workerToken = process.env.MEM0_ACCESS_TOKEN;
     const searchEndpoint = `${config.mem0ApiUrl}/memory/search`; 
@@ -47,7 +47,6 @@ if (!config.mem0ApiUrl) return "";
       },
       body: JSON.stringify({
         query: query,
-        context: query,
         user_id: config.userId,
         limit: 3
       })
@@ -59,7 +58,9 @@ if (!config.mem0ApiUrl) return "";
       return "";
     }
     
-    const memories = await response.json();
+    const responseData = await response.json();
+    
+    const memories = responseData.memories;
     
     if (Array.isArray(memories)) {
       return memories.map(m => m.memory || m.text).filter(Boolean).join("; ");
