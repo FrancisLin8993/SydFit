@@ -1,25 +1,30 @@
-// src/memoryService.js
-
-/**
- * 1. 存储用户的反馈习惯
- */
 export async function addFeedbackToMemory(config, text) {
   try {
     if (!config.mem0ApiUrl) throw new Error("MEM0_API_URL is not configured in config");
+    
+    const workerToken = process.env.WORKER_ACCESS_TOKEN;
+    if (!workerToken) throw new Error("WORKER_ACCESS_TOKEN is missing for memory service");
 
-    const response = await fetch(`${config.mem0ApiUrl}/v1/memories/`, {
+    // 🔑 对齐 Swagger: 路径改为 /memory/add
+    const response = await fetch(`${config.mem0ApiUrl}/memory/add`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-worker-token": workerToken // 
+      },
       body: JSON.stringify({
         text: text,
         user_id: config.userId
       })
     });
 
-    if (!response.ok) throw new Error(`Mem0 error: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Memory service error: ${response.status} - ${errorText}`);
+    }
     return true;
   } catch (error) {
-    console.error("❌ Failed to add memory to Mem0:", error);
+    console.error("❌ Failed to add memory:", error);
     return false;
   }
 }
@@ -30,17 +35,29 @@ export async function addFeedbackToMemory(config, text) {
 export async function getRelevantMemories(config, query) {
   try {
     if (!config.mem0ApiUrl) return "";
+    
+    const workerToken = process.env.WORKER_ACCESS_TOKEN;
 
-    const response = await fetch(`${config.mem0ApiUrl}/v1/memories/search/`, {
+    const searchEndpoint = `${config.mem0ApiUrl}/memory/search`; 
+
+    const response = await fetch(searchEndpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-worker-token": workerToken
+      },
       body: JSON.stringify({
         query: query,
-        user_id: config.userId
+        user_id: config.userId,
+        limit: 3
       })
     });
 
-    if (!response.ok) return "";
+    if (!response.ok) {
+      console.error(`Memory search error: ${response.status}`);
+      return "";
+    }
+    
     const memories = await response.json();
     
     if (Array.isArray(memories)) {
