@@ -46,7 +46,7 @@ export async function getRelevantMemories(config, query) {
         "X-Worker-Token": workerToken ? workerToken.trim() : ""
       },
       body: JSON.stringify({
-        query: query,
+        context: query,
         user_id: config.userId,
         limit: 3
       })
