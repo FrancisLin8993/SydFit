@@ -36,7 +36,7 @@ export async function getRelevantMemories(config, query) {
   try {
 if (!config.mem0ApiUrl) return "";
     
-    const workerToken = process.env.WORKER_ACCESS_TOKEN;
+    const workerToken = process.env.MEM0_ACCESS_TOKEN;
     const searchEndpoint = `${config.mem0ApiUrl}/memory/search`; 
 
     const response = await fetch(searchEndpoint, {
