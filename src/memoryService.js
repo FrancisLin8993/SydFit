@@ -47,6 +47,7 @@ if (!config.mem0ApiUrl) return "";
       },
       body: JSON.stringify({
         query: query,
+        context: query,
         user_id: config.userId,
         limit: 3
       })
