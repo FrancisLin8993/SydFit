@@ -1,18 +1,33 @@
 import OpenAI from "openai";
 
-const CF_WORKER_STREAM_URL = "https://transport-nsw-mcp-server.lfc1101.workers.dev/stream";
+const MCP_SERVER_STREAM_URL = process.env.MCP_SERVER_URL;
 
 export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
   try {
-    const response = await fetcher(CF_WORKER_STREAM_URL, {
+    if (!MCP_SERVER_STREAM_URL) {
+      throw new Error("MCP_SERVER_URL environment variable is not set");
+    }
+
+    const workerToken = process.env.WORKER_ACCESS_TOKEN;
+    if (!workerToken) {
+      throw new Error("WORKER_ACCESS_TOKEN environment variable is not set");
+    }
+
+    const response = await fetcher(MCP_SERVER_STREAM_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Worker-Token": workerToken,
+      },
       body: JSON.stringify({
         method: "get_sydney_transport_alerts",
         arguments: { mode: mode }
       })
     });
 
+    if (response.status === 401) {
+      throw new Error("MCP server rejected request: invalid or missing token");
+    }
     if (!response.ok) throw new Error(`HTTP Error. Status code: ${response.status}`);
 
     const reader = response.body.getReader();
@@ -43,7 +58,7 @@ export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
     return cleanData || `No active transport alerts for [${mode}] right now. Everything is running smoothly.`;
 
   } catch (error) {
-    console.error("❌ Fail to call Cloudflare TfNSW MCP Stream:", error);
+    console.error("❌ Fail to call TfNSW MCP Stream (Cloud Run):", error);
     return `Transit data error: Cannot retrieve traffic alert. (${error.message})`;
   }
 }
@@ -92,9 +107,9 @@ export function buildTransitErrorMessage(rawAlerts) {
 export function containsMcpError(rawAlerts) {
   const s = String(rawAlerts || "");
   return (
-    /\[ERROR\]|\[CRITICAL_ERROR\]/i.test(s) ||   // explicit MCP error tags
-    /^TfNSW API error:/im.test(s) ||              // thrown HTTP errors from index.ts
-    /^Transit data error:/im.test(s)              // errors from this file's own catch block
+    /\[ERROR\]|\[CRITICAL_ERROR\]/i.test(s) ||
+    /^TfNSW API error:/im.test(s) ||
+    /^Transit data error:/im.test(s)
   );
 }
 
