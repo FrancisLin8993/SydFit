@@ -36,20 +36,48 @@ async function handleMobileRequest(config) {
   }
 
   // 2. 原有的正常查询流转
-  const promptLower = prompt.toLowerCase();
+const promptLower = prompt.toLowerCase();
   let aiReply = "";
   let pushTitle = "💬 SydFit Assistant";
   let pushSubtitle = "Real-time Query";
 
-  if (promptLower.includes("train")) {
-    aiReply = await handleTrafficQuery(config, "train"); // 🔑 将 config 作为第一个参数传入
-    pushTitle = "🚗 Sydney Traffic Alert";
-    pushSubtitle = "Train Network Status";
-  } else if (promptLower.includes("lightrail")) {
-    aiReply = await handleTrafficQuery(config, "lightrail"); // 🔑 将 config 作为第一个参数传入
-    pushTitle = "🚊 Sydney Traffic Alert";
-    pushSubtitle = "Light Rail Status";
+  if (promptLower.includes("train") || promptLower.includes("lightrail") || promptLower.includes("traffic") || promptLower.includes("交通")) {
+
+    const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
+    console.log(`🧠 [Memory Router] Found transport mode context in Qdrant: "${transportMemory}"`);
+
+
+    let targetMode = "train"; // 默认安全回落项
+    const unifiedContext = `${promptLower} ${transportMemory.toLowerCase()}`;
+
+    if (unifiedContext.includes("lightrail") || unifiedContext.includes("light rail")) {
+      targetMode = "lightrail";
+      pushTitle = "🚊 Sydney Traffic Alert";
+      pushSubtitle = "Light Rail Status";
+    } else if (unifiedContext.includes("metro")) {
+      targetMode = "metro";
+      pushTitle = "🚇 Sydney Traffic Alert";
+      pushSubtitle = "Metro Network Status";
+    } else if (unifiedContext.includes("bus") || unifiedContext.includes("buses")) {
+      targetMode = "bus";
+      pushTitle = "🚌 Sydney Traffic Alert";
+      pushSubtitle = "Bus Network Status";
+    } else if (unifiedContext.includes("ferry") || unifiedContext.includes("ferries")) {
+      targetMode = "ferry";
+      pushTitle = "⛴️ Sydney Traffic Alert";
+      pushSubtitle = "Ferry Network Status";
+    } else {
+      // 默认依然采用 T8 所在的火车站线
+      targetMode = "train";
+      pushTitle = "🚗 Sydney Traffic Alert";
+      pushSubtitle = "Train Network Status";
+    }
+
+    console.log(`🔀 [Memory Router] Dynamically selected mode: [${targetMode}]`);
+    aiReply = await handleTrafficQuery(config, targetMode);
+    
   } else {
+    // 3. 保持原有的天气代理执行路径不变
     console.log(`☀️ [Router] Routing to Weather Agent...`);
     const weather = await getWeather(config.scheduleTimezone);
     aiReply = await generateClothingRecommendation(config, weather);
