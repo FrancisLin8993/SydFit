@@ -34,17 +34,16 @@ export async function addFeedbackToMemory(config, text) {
  */
 export async function getRelevantMemories(config, query) {
   try {
-    if (!config.mem0ApiUrl) return "";
+if (!config.mem0ApiUrl) return "";
     
-    const workerToken = process.env.MEM0_ACCESS_TOKEN;
-
+    const workerToken = process.env.WORKER_ACCESS_TOKEN;
     const searchEndpoint = `${config.mem0ApiUrl}/memory/search`; 
 
     const response = await fetch(searchEndpoint, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
-        "x-worker-token": workerToken
+        "X-Worker-Token": workerToken ? workerToken.trim() : ""
       },
       body: JSON.stringify({
         query: query,
@@ -54,7 +53,8 @@ export async function getRelevantMemories(config, query) {
     });
 
     if (!response.ok) {
-      console.error(`Memory search error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Memory search error: ${response.status} - ${errorText}`);
       return "";
     }
     
