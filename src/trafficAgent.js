@@ -9,16 +9,16 @@ export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
       throw new Error("MCP_SERVER_URL environment variable is not set");
     }
 
-    const workerToken = process.env.WORKER_ACCESS_TOKEN;
-    if (!workerToken) {
-      throw new Error("WORKER_ACCESS_TOKEN environment variable is not set");
+    const mcpAccessToken = process.env.MCP_ACCESS_TOKEN;
+    if (!mcpAccessToken) {
+      throw new Error("MCP_ACCESS_TOKEN environment variable is not set");
     }
 
     const response = await fetcher(mcpServerUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Worker-Token": workerToken,
+        "X-Worker-Token": mcpAccessToken,
       },
       body: JSON.stringify({
         method: "get_sydney_transport_alerts",

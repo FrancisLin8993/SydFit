@@ -51,6 +51,7 @@ jobs:
           SCHEDULE_TIMEZONE: Australia/Sydney
           USER_PROMPT: ${{ github.event.client_payload.prompt || '' }}
           MCP_SERVER_URL: ${{ secrets.MCP_SERVER_URL }}
-          WORKER_ACCESS_TOKEN: ${{ secrets.WORKER_ACCESS_TOKEN }}
+          MCP_ACCESS_TOKEN: ${{ secrets.MCP_ACCESS_TOKEN }}
+          MEM0_ACCESS_TOKEN: ${{ secrets.MEM0_ACCESS_TOKEN }}
           MEM0_API_URL: ${{ secrets. MEM0_API_URL}}
           USER_ID: ${{ github.event.client_payload.user_id || 'francis' }}

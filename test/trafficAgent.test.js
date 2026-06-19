@@ -20,7 +20,7 @@ const mockConfig = {
   scheduleTimezone: "Australia/Sydney",
   userPrompt: "morning commute",
   runOnStart: false,
-  userId: "fengci",
+  userId: "francis",
   mem0ApiUrl: "https://fake-mem0.run"
 };
 
@@ -40,13 +40,13 @@ function streamResponse(text) {
 // 🔑 在每个测试用例运行前，统一注入云端所需的配置环境变量，确保 fetchTfNSWStreamData 校验通过
 beforeEach(() => {
   process.env.MCP_SERVER_URL = "https://fake-mcp-server.run/stream";
-  process.env.WORKER_ACCESS_TOKEN = "fake-token";
+  process.env.MCP_ACCESS_TOKEN = "fake-token";
 });
 
 // 🔑 在每个测试用例运行后，统一清理现场，防止污染其他测试文件的环境变量
 afterEach(() => {
   delete process.env.MCP_SERVER_URL;
-  delete process.env.WORKER_ACCESS_TOKEN;
+  delete process.env.MCP_ACCESS_TOKEN;
 });
 
 test("containsMcpError detects MCP system error tags explicitly", () => {

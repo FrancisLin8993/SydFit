@@ -2,15 +2,15 @@ export async function addFeedbackToMemory(config, text) {
   try {
     if (!config.mem0ApiUrl) throw new Error("MEM0_API_URL is not configured in config");
     
-    const workerToken = process.env.WORKER_ACCESS_TOKEN;
-    if (!workerToken) throw new Error("WORKER_ACCESS_TOKEN is missing for memory service");
+    const mem0AccessToken = process.env.MEM0_ACCESS_TOKEN;
+    if (!mem0AccessToken) throw new Error("MEM0_ACCESS_TOKEN is missing for memory service");
 
     // 🔑 对齐 Swagger: 路径改为 /memory/add
     const response = await fetch(`${config.mem0ApiUrl}/memory/add`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
-        "x-worker-token": workerToken // 
+        "x-worker-token": mem0AccessToken 
       },
       body: JSON.stringify({
         text: text,
@@ -36,7 +36,7 @@ export async function getRelevantMemories(config, query) {
   try {
     if (!config.mem0ApiUrl) return "";
     
-    const workerToken = process.env.WORKER_ACCESS_TOKEN;
+    const workerToken = process.env.MEM0_ACCESS_TOKEN;
 
     const searchEndpoint = `${config.mem0ApiUrl}/memory/search`; 
 
