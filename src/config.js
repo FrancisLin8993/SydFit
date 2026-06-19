@@ -1,3 +1,4 @@
+// src/config.js
 const required = ["OPENAI_API_KEY", "BARK_DEVICE_KEY"];
 
 export function loadConfig() {
@@ -22,7 +23,9 @@ export function loadConfigFromEnv(env) {
     barkLevel: env.BARK_LEVEL || "active",
     scheduleTimezone: env.SCHEDULE_TIMEZONE || "Australia/Sydney",
     userPrompt: (env.USER_PROMPT || "").trim(),
-    runOnStart: env.RUN_ON_START === "true"
+    runOnStart: env.RUN_ON_START === "true",
+    userId: env.USER_ID || "francis",
+    mem0ApiUrl: trimTrailingSlash(env.MEM0_API_URL || "")
   };
 }
 

@@ -19,7 +19,10 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     barkLevel: "active",
     scheduleTimezone: "Australia/Sydney",
     userPrompt: "",
-    runOnStart: false
+    runOnStart: false,
+    // 🔑 验证新增的默认属性解析
+    userId: "francis",
+    mem0ApiUrl: ""
   });
 });
 
@@ -32,7 +35,10 @@ test("loadConfigFromEnv uses optional overrides", () => {
     BARK_LEVEL: "timeSensitive",
     SCHEDULE_TIMEZONE: "Pacific/Auckland",
     USER_PROMPT: "  office day  ",
-    RUN_ON_START: "true"
+    RUN_ON_START: "true",
+    // 🔑 注入记忆体相关的环境复写变量
+    USER_ID: "kate",
+    MEM0_API_URL: "https://mem0-gcp-run.net////"
   });
 
   assert.equal(config.openaiModel, "model-x");
@@ -41,6 +47,9 @@ test("loadConfigFromEnv uses optional overrides", () => {
   assert.equal(config.scheduleTimezone, "Pacific/Auckland");
   assert.equal(config.userPrompt, "office day");
   assert.equal(config.runOnStart, true);
+  // 🔑 断言复写是否生效并确认是否正确清除了末尾斜杠
+  assert.equal(config.userId, "kate");
+  assert.equal(config.mem0ApiUrl, "https://mem0-gcp-run.net");
 });
 
 test("loadConfigFromEnv reports missing required values", () => {

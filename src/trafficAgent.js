@@ -1,10 +1,11 @@
 import OpenAI from "openai";
+import { getRelevantMemories } from "./memoryService.js";
 
-const MCP_SERVER_STREAM_URL = process.env.MCP_SERVER_URL;
 
 export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
   try {
-    if (!MCP_SERVER_STREAM_URL) {
+    const mcpServerUrl = process.env.MCP_SERVER_URL;
+    if (!mcpServerUrl) {
       throw new Error("MCP_SERVER_URL environment variable is not set");
     }
 
@@ -13,7 +14,7 @@ export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
       throw new Error("WORKER_ACCESS_TOKEN environment variable is not set");
     }
 
-    const response = await fetcher(MCP_SERVER_STREAM_URL, {
+    const response = await fetcher(mcpServerUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -63,36 +64,35 @@ export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
   }
 }
 
-export async function handleTrafficQuery(userPrompt, mode = "train", options = {}) {
+export async function handleTrafficQuery(config, mode = "train", options = {}) {
   const client = options.client || new OpenAI();
   const fetcher = options.fetcher || fetch;
   console.log(`🚗 [Traffic Agent] Retrieving [${mode}] real time alert...`);
 
   const rawAlerts = await fetchTfNSWStreamData(mode, fetcher);
-  console.log(`[Traffic Agent] Alert content parsed:`, JSON.stringify(rawAlerts));
+  
+  // 🧠 传入统一的 config 对象，动态读取云端的 userId 与 mem0 路由
+  const userTransitMemories = await getRelevantMemories(config, `${mode} transport commute sydney`);
+  console.log(`🧠 [Memory Bank] Retrieved transit memories for [${config.userId}]:`, userTransitMemories);
 
   const transitError = buildTransitErrorMessage(rawAlerts);
-  if (transitError) {
-    return transitError;
-  }
+  if (transitError) return transitError;
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are a senior local public transport expert in Sydney.
+  const systemContent = `You are a senior local public transport expert in Sydney.
 Your task is to distil the provided raw Transport for NSW real-time alert data into an easy-to-understand commute briefing for the user.
 
+${userTransitMemories ? `CRITICAL - USER PREFERENCES TO OBEY:\nThe user has specified the following personal habits/preferences, historical feedback, or constraints. You MUST align your advice with these memories:\n"${userTransitMemories}"` : ""}
+
 Code of Conduct:
-1. If the data indicates everything is normal (e.g., no alerts found or explicitly states running smoothly), tell the user in a single sentence that today's commute is smooth and clear.
-2. If there are active alerts (e.g., delays, trackwork), clearly list the affected routes or the level of severity, and provide reasonable travel advice (e.g., suggesting switching to buses or leaving early).
-3. The response must be highly concise with no fluff, ensuring it is perfectly suited for reading in mobile Bark push notifications or Apple Shortcuts.`
-      },
-      {
-        role: "user",
-        content: `User prompt: "${userPrompt}"\n\nReal time alert from TfNSW MCP server:\n${rawAlerts}`
-      }
+1. If the data indicates everything is normal, tell the user today's commute is smooth.
+2. If there are active alerts, clearly list the affected routes or severity, and provide reasonable travel advice.
+3. Response must be highly concise with no fluff, perfect for mobile Bark or Apple Shortcuts.`;
+
+  const response = await client.chat.completions.create({
+    model: config.openaiModel, // 顺手对齐配置里指定的模型
+    messages: [
+      { role: "system", content: systemContent },
+      { role: "user", content: `User prompt: "${config.userPrompt}"\n\nReal time alert from TfNSW MCP server:\n${rawAlerts}` }
     ]
   });
 
