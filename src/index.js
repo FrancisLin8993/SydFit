@@ -5,7 +5,8 @@ import { generateClothingRecommendation } from "./openai.js";
 import { formatLocalTime, isScheduledLocalTime } from "./scheduler.js";
 import { getWeather } from "./weather.js";
 import { handleTrafficQuery, buildTransitErrorMessage } from "./trafficAgent.js";
-import { addFeedbackToMemory } from "./memoryService.js"; // 引入记忆存储
+import { addFeedbackToMemory } from "./memoryService.js"; 
+import { determineIntentAndMode } from "./intentRouter.js";
 
 async function handleMobileRequest(config) {
   const prompt = config.userPrompt;
@@ -35,45 +36,34 @@ async function handleMobileRequest(config) {
     return;
   }
 
-  // 2. 原有的正常查询流转
-const promptLower = prompt.toLowerCase();
   let aiReply = "";
   let pushTitle = "💬 SydFit Assistant";
   let pushSubtitle = "Real-time Query";
 
-  if (promptLower.includes("train") || promptLower.includes("lightrail") || promptLower.includes("traffic") || promptLower.includes("交通")) {
-
-    const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
-    console.log(`🧠 [Memory Router] Found transport mode context in Qdrant: "${transportMemory}"`);
+  const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
+  console.log(`🧠 [Memory Context] Loaded for routing: "${transportMemory}"`);
 
 
-    let targetMode = "train"; // 默认安全回落项
-    const unifiedContext = `${promptLower} ${transportMemory.toLowerCase()}`;
+  const routingResult = await determineIntentAndMode(config, prompt, transportMemory);
+  console.log(`🔀 [LLM Router] Decision:`, routingResult);
 
-    if (unifiedContext.includes("lightrail") || unifiedContext.includes("light rail")) {
-      targetMode = "lightrail";
-      pushTitle = "🚊 Sydney Traffic Alert";
-      pushSubtitle = "Light Rail Status";
-    } else if (unifiedContext.includes("metro")) {
-      targetMode = "metro";
-      pushTitle = "🚇 Sydney Traffic Alert";
-      pushSubtitle = "Metro Network Status";
-    } else if (unifiedContext.includes("bus") || unifiedContext.includes("buses")) {
-      targetMode = "bus";
-      pushTitle = "🚌 Sydney Traffic Alert";
-      pushSubtitle = "Bus Network Status";
-    } else if (unifiedContext.includes("ferry") || unifiedContext.includes("ferries")) {
-      targetMode = "ferry";
-      pushTitle = "⛴️ Sydney Traffic Alert";
-      pushSubtitle = "Ferry Network Status";
-    } else {
-      // 默认依然采用 T8 所在的火车站线
-      targetMode = "train";
-      pushTitle = "🚗 Sydney Traffic Alert";
-      pushSubtitle = "Train Network Status";
-    }
 
-    console.log(`🔀 [Memory Router] Dynamically selected mode: [${targetMode}]`);
+  if (routingResult.intent === "traffic") {
+    const targetMode = routingResult.mode || "train";
+    
+    // 动态映射 UI 文案，无需再写 if-else
+    const pushUI = {
+      "lightrail": { title: "🚊 Sydney Traffic Alert", sub: "Light Rail Status" },
+      "metro": { title: "🚇 Sydney Traffic Alert", sub: "Metro Network Status" },
+      "bus": { title: "🚌 Sydney Traffic Alert", sub: "Bus Network Status" },
+      "ferry": { title: "⛴️ Sydney Traffic Alert", sub: "Ferry Network Status" },
+      "train": { title: "🚗 Sydney Traffic Alert", sub: "Train Network Status" }
+    };
+
+    pushTitle = pushUI[targetMode]?.title || pushUI["train"].title;
+    pushSubtitle = pushUI[targetMode]?.sub || pushUI["train"].sub;
+
+    console.log(`🚂 [Traffic Agent] Firing mode: [${targetMode}]`);
     aiReply = await handleTrafficQuery(config, targetMode);
     
   } else {
