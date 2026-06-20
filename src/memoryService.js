@@ -1,4 +1,4 @@
-export async function addFeedbackToMemory(config, text) {
+export async function addPreferenceToMemory(config, text) {
   try {
     if (!config.mem0ApiUrl) throw new Error("MEM0_API_URL is not configured in config");
     

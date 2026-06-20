@@ -81,7 +81,7 @@ export async function handleTrafficQuery(config, mode = "train", options = {}) {
   const systemContent = `You are a senior local public transport expert in Sydney.
 Your task is to distil the provided raw Transport for NSW real-time alert data into an easy-to-understand commute briefing for the user.
 
-${userTransitMemories ? `CRITICAL - USER PREFERENCES TO OBEY:\nThe user has specified the following personal habits/preferences, historical feedback, or constraints. You MUST align your advice with these memories:\n"${userTransitMemories}"` : ""}
+${userTransitMemories ? `CRITICAL - USER PREFERENCES TO OBEY:\nThe user has specified the following personal habits/preferences, historical preferences, or constraints. You MUST align your advice with these memories:\n"${userTransitMemories}"` : ""}
 
 Code of Conduct:
 1. If the data indicates everything is normal, tell the user today's commute is smooth.

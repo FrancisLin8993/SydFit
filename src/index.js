@@ -5,24 +5,24 @@ import { generateClothingRecommendation } from "./openai.js";
 import { formatLocalTime, isScheduledLocalTime } from "./scheduler.js";
 import { getWeather } from "./weather.js";
 import { handleTrafficQuery, buildTransitErrorMessage } from "./trafficAgent.js";
-import { addFeedbackToMemory } from "./memoryService.js"; 
+import { addPreferenceToMemory } from "./memoryService.js"; 
 import { determineIntentAndMode } from "./intentRouter.js";
 
 async function handleMobileRequest(config) {
   const prompt = config.userPrompt;
   console.log(`[Router] Detected mobile real-time request: "${prompt}"`);
   
-  if (prompt.toLowerCase().startsWith("advice")) {
-    const actualFeedback = prompt.replace(/^advice[:]?\s*/i, "").trim();
-    console.log(`📥 [Memory Processor] Extracting feedback message: "${actualFeedback}"`);
+  if (prompt.toLowerCase().startsWith("personal")) {
+    const actualPreference = prompt.replace(/^personal[:]?\s*/i, "").trim();
+    console.log(`📥 [Memory Processor] Extracting advice message: "${actualPreference}"`);
 
     let pushBody = "";
-    if (!actualFeedback) {
-      pushBody = "❌ Failed to remember: Feedback text content cannot be empty.";
+    if (!actualPreference) {
+      pushBody = "❌ Failed to remember: Preference text content cannot be empty.";
     } else {
-      const isSaved = await addFeedbackToMemory(config, actualFeedback);
+      const isSaved = await addPreferenceToMemory(config, actualPreference);
       pushBody = isSaved 
-        ? `🧠 SydFit remembered preference for user [${config.userId}]: "${actualFeedback}"`
+        ? `🧠 SydFit remembered preference for user [${config.userId}]: "${actualPreference}"`
         : "❌ Memory cluster sync failed. Please check Mem0/GCP status.";
     }
 
