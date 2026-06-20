@@ -13,6 +13,7 @@ async function getCoordinatesFromLocation(locationQuery, fetcher = fetch) {
   const params = new URLSearchParams({
     name: locationQuery,
     count: 1, 
+    countryCode: "AU",
     language: "en",
     format: "json"
   });
