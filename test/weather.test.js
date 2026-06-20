@@ -25,8 +25,14 @@ const openMeteoPayload = {
   }
 };
 
+
+const mockConfig = {
+  scheduleTimezone: "Australia/Sydney"
+};
+
 test("normalizeWeather maps Open-Meteo fields to app weather shape", () => {
-  assert.deepEqual(normalizeWeather(openMeteoPayload), {
+  // 注入第二个参数 "Mascot, NSW"
+  assert.deepEqual(normalizeWeather(openMeteoPayload, "Mascot, NSW"), {
     location: "Mascot, NSW",
     observedAt: "2026-06-07T10:45",
     condition: "Clear sky",
@@ -47,7 +53,7 @@ test("normalizeWeather maps Open-Meteo fields to app weather shape", () => {
 });
 
 test("normalizeWeather tolerates missing current and daily objects", () => {
-  const weather = normalizeWeather({});
+  const weather = normalizeWeather({}, "Mascot, NSW");
   assert.equal(weather.location, "Mascot, NSW");
   assert.equal(weather.condition, "Weather code undefined");
   assert.equal(weather.temperatureC, undefined);
@@ -60,35 +66,56 @@ test("first returns first array item or the original value", () => {
   assert.equal(first(undefined), undefined);
 });
 
-test("getMascotWeather requests Mascot forecast and normalizes response", async () => {
-  let requestedUrl;
-  const fetcher = async (url) => {
-    requestedUrl = new URL(url);
+test("getWeather requests forecast for resolved location and normalizes response", async () => {
+  let requestedForecastUrl;
+  
+  const mockFetcher = async (url) => {
+    if (url.includes("geocoding-api")) {
+      return {
+        ok: true,
+        json: async () => ({
+          results: [{ latitude: -33.928, longitude: 151.193, name: "Mascot", admin1: "New South Wales" }]
+        })
+      };
+    }
+    
+    requestedForecastUrl = new URL(url);
     return {
       ok: true,
       json: async () => openMeteoPayload
     };
   };
 
-  const weather = await getWeather("Australia/Sydney", fetcher);
+  const weather = await getWeather(mockConfig, mockFetcher);
 
-  assert.equal(requestedUrl.origin, "https://api.open-meteo.com");
-  assert.equal(requestedUrl.pathname, "/v1/forecast");
-  assert.equal(requestedUrl.searchParams.get("latitude"), "-33.928");
-  assert.equal(requestedUrl.searchParams.get("longitude"), "151.193");
-  assert.equal(requestedUrl.searchParams.get("timezone"), "Australia/Sydney");
+  assert.equal(requestedForecastUrl.origin, "https://api.open-meteo.com");
+  assert.equal(requestedForecastUrl.pathname, "/v1/forecast");
+  assert.equal(requestedForecastUrl.searchParams.get("latitude"), "-33.928");
+  assert.equal(requestedForecastUrl.searchParams.get("longitude"), "151.193");
+  assert.equal(requestedForecastUrl.searchParams.get("timezone"), "Australia/Sydney");
+  
   assert.equal(weather.condition, "Clear sky");
+  assert.equal(weather.location, "Mascot, New South Wales"); 
 });
 
-test("getMascotWeather throws on failed weather response", async () => {
-  const fetcher = async () => ({
-    ok: false,
-    status: 503,
-    statusText: "Service Unavailable"
-  });
+test("getWeather throws on failed weather response", async () => {
+  const mockFetcher = async (url) => {
+    if (url.includes("geocoding-api")) {
+      return {
+        ok: true,
+        json: async () => ({ results: [] }) 
+      };
+    }
+    
+    return {
+      ok: false,
+      status: 503,
+      statusText: "Service Unavailable"
+    };
+  };
 
   await assert.rejects(
-    () => getWeather("Australia/Sydney", fetcher),
+    () => getWeather(mockConfig, mockFetcher),
     /Open-Meteo request failed: 503 Service Unavailable/
   );
 });

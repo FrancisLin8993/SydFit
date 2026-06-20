@@ -69,7 +69,7 @@ async function handleMobileRequest(config) {
   } else {
     // 3. 保持原有的天气代理执行路径不变
     console.log(`☀️ [Router] Routing to Weather Agent...`);
-    const weather = await getWeather(config.scheduleTimezone);
+    const weather = await getWeather(config);
     aiReply = await generateClothingRecommendation(config, weather);
     pushTitle = "☀️ Mascot Outfit Suggestion";
     pushSubtitle = `${weather.condition}, ${weather.temperatureC}°C`;
