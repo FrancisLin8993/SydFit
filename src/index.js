@@ -5,7 +5,7 @@ import { generateClothingRecommendation } from "./openai.js";
 import { formatLocalTime, isScheduledLocalTime } from "./scheduler.js";
 import { getWeather } from "./weather.js";
 import { handleTrafficQuery, buildTransitErrorMessage } from "./trafficAgent.js";
-import { addPreferenceToMemory } from "./memoryService.js"; 
+import { addPreferenceToMemory, getRelevantMemories } from "./memoryService.js"; 
 import { determineIntentAndMode } from "./intentRouter.js";
 
 async function handleMobileRequest(config) {
