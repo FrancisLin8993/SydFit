@@ -12,9 +12,8 @@ async function handleMobileRequest(config) {
   const prompt = config.userPrompt;
   console.log(`[Router] Detected mobile real-time request: "${prompt}"`);
   
-  // 🚨 1. 核心分流：判断是否为 Feedback 存储请求
-  if (prompt.toLowerCase().startsWith("fb")) {
-    const actualFeedback = prompt.replace(/^fb[:]?\s*/i, "").trim();
+  if (prompt.toLowerCase().startsWith("advice")) {
+    const actualFeedback = prompt.replace(/^advice[:]?\s*/i, "").trim();
     console.log(`📥 [Memory Processor] Extracting feedback message: "${actualFeedback}"`);
 
     let pushBody = "";
