@@ -22,7 +22,6 @@ function createMockClient(mockedResponseContent) {
 }
 
 test("determineIntentAndMode detects explicit traffic mode from prompt", async () => {
-  // 模拟大模型正确识别出 lightrail
   const client = createMockClient('{"intent": "traffic", "mode": "lightrail"}');
   
   const result = await determineIntentAndMode(
@@ -36,7 +35,6 @@ test("determineIntentAndMode detects explicit traffic mode from prompt", async (
 });
 
 test("determineIntentAndMode detects weather intent and returns null mode", async () => {
-  // 模拟大模型识别出天气请求
   const client = createMockClient('{"intent": "weather", "mode": null}');
   
   const result = await determineIntentAndMode(
@@ -98,14 +96,12 @@ test("determineIntentAndMode safely falls back to train on OpenAI API error", as
     { client }
   );
   
-  // 断言：即便网络爆炸，依然坚挺地返回默认的 train
   assert.deepEqual(result, { intent: "traffic", mode: "train" });
 });
 
 test("determineIntentAndMode safely falls back to train on JSON parsing failure", async (t) => {
   t.mock.method(console, "error", () => {}); 
 
-  // 模拟大模型抽风，没有按照 JSON_object 返回，而是返回了普通文本
   const client = createMockClient("I am an AI and I don't want to output JSON.");
   
   const result = await determineIntentAndMode(
@@ -115,6 +111,5 @@ test("determineIntentAndMode safely falls back to train on JSON parsing failure"
     { client }
   );
   
-  // 断言：即便 JSON 解析崩溃（JSON.parse 抛错），也要被 catch 捕获并安全回落
   assert.deepEqual(result, { intent: "traffic", mode: "train" });
 });

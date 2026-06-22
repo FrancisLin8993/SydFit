@@ -5,7 +5,6 @@ export async function addPreferenceToMemory(config, text) {
     const mem0AccessToken = process.env.MEM0_ACCESS_TOKEN;
     if (!mem0AccessToken) throw new Error("MEM0_ACCESS_TOKEN is missing for memory service");
 
-    // 🔑 对齐 Swagger: 路径改为 /memory/add
     const response = await fetch(`${config.mem0ApiUrl}/memory/add`, {
       method: "POST",
       headers: { 

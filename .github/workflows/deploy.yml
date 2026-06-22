@@ -1,57 +1,44 @@
-name: SydFit Personal assistant
-
+name: Deploy SydFit API
 on:
-  schedule:
-    # GitHub Actions cron is UTC. These two times cover 7:00 AM Sydney time
-    # across daylight saving and standard time; src/index.js sends only when
-    # Australia/Sydney is actually 7:00 AM.
-    - cron: "0 20 * * *"
-    - cron: "0 21 * * *"
-  workflow_dispatch:
   push:
-  repository_dispatch:
-    types: [mobile_prompt]
+    branches:
+      - main
 
 jobs:
-  notify:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      # 这里假设你已经配置好了 Workload Identity Federation 或 GCP Credentials
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
         with:
-          node-version: "24"
-      
-      - name: Install dependencies
-        run: npm ci
+          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
 
-      - name: Check syntax
-        run: npm run check
-
-      - name: Run unit tests
-        run: npm test
-
-      - name: Send notification
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            node src/index.js --force
-          else
-            node src/index.js
-          fi
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: 'gpt-5.4-mini'
-          BARK_DEVICE_KEY: ${{ secrets.BARK_DEVICE_KEY }}
-          BARK_SERVER_URL: 'https://api.day.app'
-          BARK_GROUP: 'Weather'
-          BARK_LEVEL: 'active'
-          SCHEDULE_TIMEZONE: Australia/Sydney
-          USER_PROMPT: ${{ github.event.client_payload.prompt || '' }}
-          MCP_SERVER_URL: ${{ secrets.MCP_SERVER_URL }}
-          MCP_ACCESS_TOKEN: ${{ secrets.MCP_ACCESS_TOKEN }}
-          MEM0_ACCESS_TOKEN: ${{ secrets.MEM0_ACCESS_TOKEN }}
-          MEM0_API_URL: ${{ secrets. MEM0_API_URL}}
-          USER_ID: ${{ github.event.client_payload.user_id || 'francis' }}
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v1
+        with:
+          service: sydfit-api
+          region: australia-southeast1 # 悉尼节点
+          source: .
+          # 💡 核心保护参数
+          flags: >-
+            --allow-unauthenticated
+            --min-instances=0
+            --max-instances=1
+            --service-account=sydfit-identity@your-project-id.iam.gserviceaccount.com
+          env_vars: |
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            OPENAI_MODEL=gpt-5.4-mini
+            BARK_DEVICE_KEY=${{ secrets.BARK_DEVICE_KEY }}
+            BARK_SERVER_URL=https://api.day.app
+            BARK_GROUP=Weather
+            BARK_LEVEL=active
+            SCHEDULE_TIMEZONE=Australia/Sydney
+            MCP_SERVER_URL=${{ secrets.MCP_SERVER_URL }}
+            MCP_ACCESS_TOKEN=${{ secrets.MCP_ACCESS_TOKEN }}
+            MEM0_ACCESS_TOKEN=${{ secrets.MEM0_ACCESS_TOKEN }}
+            MEM0_API_URL=${{ secrets.MEM0_API_URL }}
+            SYDFIT_API_KEY=${{ secrets.SYDFIT_API_KEY }}

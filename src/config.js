@@ -1,5 +1,4 @@
-// src/config.js
-const required = ["OPENAI_API_KEY", "BARK_DEVICE_KEY"];
+const required = ["OPENAI_API_KEY", "BARK_DEVICE_KEY", "SYDFIT_API_KEY"];
 
 export function loadConfig() {
   return loadConfigFromEnv(process.env);
@@ -18,13 +17,11 @@ export function loadConfigFromEnv(env) {
     openaiApiKey: env.OPENAI_API_KEY,
     openaiModel: env.OPENAI_MODEL || "gpt-5.4-mini",
     barkDeviceKey: env.BARK_DEVICE_KEY,
+    sydFitApiKey: env.SYDFIT_API_KEY,
     barkServerUrl: trimTrailingSlash(env.BARK_SERVER_URL || "https://api.day.app"),
     barkGroup: env.BARK_GROUP || "Weather",
     barkLevel: env.BARK_LEVEL || "active",
     scheduleTimezone: env.SCHEDULE_TIMEZONE || "Australia/Sydney",
-    userPrompt: (env.USER_PROMPT || "").trim(),
-    runOnStart: env.RUN_ON_START === "true",
-    userId: env.USER_ID || "francis",
     mem0ApiUrl: trimTrailingSlash(env.MEM0_API_URL || "")
   };
 }

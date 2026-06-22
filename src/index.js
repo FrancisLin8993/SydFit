@@ -1,100 +1,100 @@
 // src/index.js
+import { serve } from '@hono/node-server';
+import { Hono } from 'hono';
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
 import { generateClothingRecommendation } from "./openai.js";
-import { formatLocalTime, isScheduledLocalTime } from "./scheduler.js";
 import { getWeather } from "./weather.js";
 import { handleTrafficQuery, buildTransitErrorMessage } from "./trafficAgent.js";
 import { addPreferenceToMemory, getRelevantMemories } from "./memoryService.js"; 
 import { determineIntentAndMode } from "./intentRouter.js";
 
-async function handleMobileRequest(config) {
-  const prompt = config.userPrompt;
-  console.log(`[Router] Detected mobile real-time request: "${prompt}"`);
-  
-  if (prompt.toLowerCase().startsWith("personal")) {
-    const actualPreference = prompt.replace(/^personal[:]?\s*/i, "").trim();
-    console.log(`📥 [Memory Processor] Extracting advice message: "${actualPreference}"`);
+const app = new Hono();
+const config = loadConfig();
 
-    let pushBody = "";
-    if (!actualPreference) {
-      pushBody = "❌ Failed to remember: Preference text content cannot be empty.";
-    } else {
-      const isSaved = await addPreferenceToMemory(config, actualPreference);
-      pushBody = isSaved 
-        ? `🧠 SydFit remembered preference for user [${config.userId}]: "${actualPreference}"`
-        : "❌ Memory cluster sync failed. Please check Mem0/GCP status.";
+
+app.use('*', async (c, next) => {
+  const token = c.req.header('x-sydfit-token');
+    if (!config.sydFitApiKey || token !== config.sydFitApiKey) {
+      console.warn("⚠️ Unauthorized access attempt intercepted.");
+      return c.json({ error: 'Unauthorized' }, 401);
+  }
+  
+  await next();
+});
+
+
+app.post('/api/ask', async (c) => {
+  const traces = [];
+  
+  try {
+    const { query } = await c.req.json();
+    traces.push(`📥 Received client request: "${query}"`);
+
+    if (query.toLowerCase().startsWith("personal")) {
+      const actualPreference = query.replace(/^personal[:]?\s*/i, "").trim();
+      traces.push(`📥 [Processing memory] Extract preferences: "${actualPreference}"`);
+
+      let replyText = "";
+      if (!actualPreference) {
+        replyText = "❌ Save failed: Preference cannot be empty";
+      } else {
+        const isSaved = await addPreferenceToMemory(config, actualPreference);
+        replyText = isSaved 
+          ? `🧠 Preference has been added`
+          : "❌ Memory cluster failed to load. Please check mem0 status.";
+      }
+      
+      traces.push(replyText);
+      return c.json({ success: true, traces, reply: replyText });
     }
 
-    // 发送 Bark 弹窗并直接熔断返回
-    await sendBarkNotification(config, {
-      title: "🧠 SydFit Memory Sync",
-      subtitle: "Personal Preference Logged",
-      body: pushBody,
+    traces.push("🧠 Searching memory for transport preferences...");
+    const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
+    traces.push(`💾 Memory loaded: "${transportMemory || ''}"`);
+
+    const routingResult = await determineIntentAndMode(config, query, transportMemory);
+    traces.push(`🔀 [LLM Routing] Decision result: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || 'N/A'}]`);
+
+    let aiReply = "";
+
+    if (routingResult.intent === "traffic") {
+      const targetMode = routingResult.mode || "train";
+      traces.push(`🚂 [Traffic agent] Searching TfNSW data: ${targetMode}`);
+      aiReply = await handleTrafficQuery(config, targetMode);
+    } else {
+      traces.push(`☀️ [Weather agent] Retrieving weather forecast and generating clothing recommendation...`);
+      const weather = await getWeather(config);
+      aiReply = await generateClothingRecommendation(config, weather);
+    }
+
+    traces.push(`✅ Workflow completed.`);
+    
+    return c.json({
+      success: true,
+      traces: traces,
+      reply: aiReply
     });
-    return;
+
+  } catch (error) {
+    console.error("❌ /api/ask Error:", error);
+    return c.json({ success: false, error: error.message, traces }, 500);
   }
-
-  let aiReply = "";
-  let pushTitle = "💬 SydFit Assistant";
-  let pushSubtitle = "Real-time Query";
-
-  const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
-  console.log(`🧠 [Memory Context] Loaded for routing: "${transportMemory}"`);
+});
 
 
-  const routingResult = await determineIntentAndMode(config, prompt, transportMemory);
-  console.log(`🔀 [LLM Router] Decision:`, routingResult);
-
-
-  if (routingResult.intent === "traffic") {
-    const targetMode = routingResult.mode || "train";
-    
-    // 动态映射 UI 文案，无需再写 if-else
-    const pushUI = {
-      "lightrail": { title: "🚊 Sydney Traffic Alert", sub: "Light Rail Status" },
-      "metro": { title: "🚇 Sydney Traffic Alert", sub: "Metro Network Status" },
-      "bus": { title: "🚌 Sydney Traffic Alert", sub: "Bus Network Status" },
-      "ferry": { title: "⛴️ Sydney Traffic Alert", sub: "Ferry Network Status" },
-      "train": { title: "🚗 Sydney Traffic Alert", sub: "Train Network Status" }
-    };
-
-    pushTitle = pushUI[targetMode]?.title || pushUI["train"].title;
-    pushSubtitle = pushUI[targetMode]?.sub || pushUI["train"].sub;
-
-    console.log(`🚂 [Traffic Agent] Firing mode: [${targetMode}]`);
-    aiReply = await handleTrafficQuery(config, targetMode);
-    
-  } else {
-    // 3. 保持原有的天气代理执行路径不变
-    console.log(`☀️ [Router] Routing to Weather Agent...`);
-    const weather = await getWeather(config);
-    aiReply = await generateClothingRecommendation(config, weather);
-    pushTitle = "☀️ Mascot Outfit Suggestion";
-    pushSubtitle = `${weather.condition}, ${weather.temperatureC}°C`;
-  }
-
-  await sendBarkNotification(config, {
-    title: pushTitle,
-    subtitle: pushSubtitle,
-    body: aiReply,
-  });
-}
-
-async function runScheduledJob(config) {
-  console.log(`⏰ [${new Date().toISOString()}] Executing Scheduled Daily Briefing Job...`);
+app.post('/api/cron', async (c) => {
+  console.log(`⏰ [Cron] Daily schedule job triggered`);
 
   try {
-    console.log(`🚀 [Router] Launching Weather and Traffic Agents concurrently...`);
-
     const [weather, trafficReport] = await Promise.all([
-      getWeather(config.scheduleTimezone),
-      handleTrafficQuery(config, "train"), // 🔑 将 config 传入
+      getWeather(config),
+      handleTrafficQuery(config, "train"),
     ]);
 
     const trafficError = buildTransitErrorMessage(trafficReport);
     if (trafficError) {
-      console.error(`❌ Traffic agent returned an error: ${trafficReport}`);
+      console.error(`❌ Traffic agent error: ${trafficReport}`);
       await sendBarkNotification(config, {
         title: "❌ Transit Data Error",
         subtitle: "MCP Server / TfNSW API",
@@ -103,9 +103,7 @@ async function runScheduledJob(config) {
     }
 
     const clothingRecommendation = await generateClothingRecommendation(config, weather);
-    const weatherSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
-
-    console.log(`[${new Date().toISOString()}] Sending morning Bark notifications...`);
+    const weatherSubtitle = `${weather.condition}, ${weather.temperatureC}°C (体感 ${weather.apparentTemperatureC}°C)`;
 
     const notifications = [
       sendBarkNotification(config, {
@@ -126,40 +124,32 @@ async function runScheduledJob(config) {
     }
 
     await Promise.all(notifications);
+    console.log(`✅ [Cron] Daily message pushed successfully.`);
+    
+    return c.json({ success: true, message: "Morning briefing sent via Bark." });
 
   } catch (error) {
-    console.error("❌ Job Failed:", error);
+    console.error("❌ Cron Job Failed:", error);
     await sendBarkNotification(config, {
       title: "❌ SydFit Error",
-      subtitle: "Job Exception",
+      subtitle: "Cron Job Exception",
       body: error.message,
     });
+    return c.json({ success: false, error: error.message }, 500);
   }
-}
-
-// main() 函数保持完全不变
-async function main() {
-  const config = loadConfig();
-
-  if (config.userPrompt !== "") {
-    await handleMobileRequest(config);
-  } else {
-    const force = process.argv.includes("--force") || config.runOnStart;
-
-    if (!force && !isScheduledLocalTime({ timezone: config.scheduleTimezone, hour: 7, toleranceMinutes: 90 })) {
-      console.log(
-        `Skipping notification. Local time is ${formatLocalTime(new Date(), config.scheduleTimezone)}, not within window for 7 AM.`
-      );
-      return;
-    }
-
-    await runScheduledJob(config);
-  }
-
-  console.log(`[${new Date().toISOString()}] Execution finished successfully.`);
-}
-
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
 });
+
+
+const port = process.env.PORT || 8080;
+console.log(`🚀 SydFit is starting on port ${port}...`);
+
+export { app };
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const port = process.env.PORT || 8080;
+  console.log(`🚀 Sydfit is starting on port ${port}...`);
+  serve({
+    fetch: app.fetch,
+    port
+  });
+}
