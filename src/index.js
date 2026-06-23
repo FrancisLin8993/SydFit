@@ -54,7 +54,7 @@ app.get('/doc', (c) => {
             required: true,
             content: {
               'application/json': {
-                schema: { type: 'object', properties: { query: { type: 'string', example: '悉尼火车T8今天延误吗' } } }
+                schema: { type: 'object', properties: { query: { type: 'string', example: 'train' } } }
               }
             }
           },
@@ -65,7 +65,7 @@ app.get('/doc', (c) => {
       },
       '/api/cron': {
         post: {
-          summary: 'Daily Morning Briefing (Cloud Scheduler)',
+          summary: 'Daily Morning Briefing',
           description: 'Triggers the daily Bark notifications for weather and transit.',
           responses: {
             200: { description: 'Bark notifications sent' }
