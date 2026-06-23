@@ -1,13 +1,20 @@
 import assert from "node:assert/strict";
-import test from "node:test"; // 移除了 beforeEach 和 afterEach
+import test, { mock } from "node:test"; 
 
-import {
+mock.module("../src/gcpAuth.js", {
+  namedExports: {
+    getGcpAuthHeaders: mock.fn(async () => ({ "Authorization": "Bearer fake-gcp-token" }))
+  }
+});
+
+// 🔑 Use dynamic import so the mock takes effect
+const {
   buildTransitErrorMessage,
   containsMcpError,
   fetchTfNSWStreamData,
   handleTrafficQuery,
   summarizeMcpError
-} from "../src/trafficAgent.js";
+} = await import("../src/trafficAgent.js");
 
 const mockConfig = {
   openaiApiKey: "fake-key",
@@ -21,7 +28,8 @@ const mockConfig = {
   runOnStart: false,
   userId: "francis",
   mem0ApiUrl: "https://fake-mem0.run",
-  mcpServerUrl: "https://fake-mcp-server.run/stream",
+  // 🔑 Updated to a clean root URL to match the new architecture
+  mcpServerUrl: "https://fake-mcp-server.run", 
   mcpAccessToken: "fake-token"
 };
 
