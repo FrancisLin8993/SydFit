@@ -71,8 +71,9 @@ describe("SydFit Hono API Tests", () => {
 
   describe("📱 POST /api/ask (Mobile Real-time Endpoint)", () => {
     
-    test("🧠 Personal Memory Branch: Should save preference and return success", async () => {
+    test("🧠 Personal Memory Branch: Should save preference and trigger Bark push", async () => {
       memoryServiceMock.addPreferenceToMemory.mock.mockImplementation(() => Promise.resolve(true));
+      barkMock.sendBarkNotification.mock.mockImplementation(() => Promise.resolve());
 
       const res = await app.request('/api/ask', {
         method: 'POST',
@@ -84,12 +85,16 @@ describe("SydFit Hono API Tests", () => {
       const data = await res.json();
       assert.equal(data.success, true);
       assert.equal(memoryServiceMock.addPreferenceToMemory.mock.callCount(), 1);
+      assert.equal(barkMock.sendBarkNotification.mock.callCount(), 1);
+      const barkArgs = barkMock.sendBarkNotification.mock.calls[0].arguments[1];
+      assert.match(barkArgs.body, /SydFit has remembered this preference/);
     });
 
-    test("🚂 Traffic Intent Branch: Should route to traffic agent and return transit status", async () => {
+    test("🚂 Traffic Intent Branch: Should route to traffic agent and trigger Bark push", async () => {
       memoryServiceMock.getRelevantMemories.mock.mockImplementation(() => Promise.resolve(""));
       intentRouterMock.determineIntentAndMode.mock.mockImplementation(() => Promise.resolve({ intent: 'traffic', mode: 'train' }));
       trafficAgentMock.handleTrafficQuery.mock.mockImplementation(() => Promise.resolve("T8 Line is operating normally."));
+      barkMock.sendBarkNotification.mock.mockImplementation(() => Promise.resolve());
 
       const res = await app.request('/api/ask', {
         method: 'POST',
@@ -100,15 +105,21 @@ describe("SydFit Hono API Tests", () => {
       assert.equal(res.status, 200);
       const data = await res.json();
       assert.equal(data.success, true);
-      assert.equal(data.reply, "T8 Line is operating normally.");
+      assert.equal(data.message, "Bark push triggered successfully.");
       assert.equal(trafficAgentMock.handleTrafficQuery.mock.callCount(), 1);
+
+      // Assert Bark was triggered with the traffic reply
+      assert.equal(barkMock.sendBarkNotification.mock.callCount(), 1);
+      const barkArgs = barkMock.sendBarkNotification.mock.calls[0].arguments[1];
+      assert.equal(barkArgs.body, "T8 Line is operating normally.");
     });
 
-    test("☀️ Weather Intent Branch: Should route to weather agent and return clothing advice", async () => {
+    test("☀️ Weather Intent Branch: Should route to weather agent and trigger Bark push", async () => {
       memoryServiceMock.getRelevantMemories.mock.mockImplementation(() => Promise.resolve(""));
       intentRouterMock.determineIntentAndMode.mock.mockImplementation(() => Promise.resolve({ intent: 'weather', mode: null }));
       weatherMock.getWeather.mock.mockImplementation(() => Promise.resolve({ condition: 'Sunny', temperatureC: 22 }));
       openaiMock.generateClothingRecommendation.mock.mockImplementation(() => Promise.resolve("Wear a t-shirt."));
+      barkMock.sendBarkNotification.mock.mockImplementation(() => Promise.resolve());
 
       const res = await app.request('/api/ask', {
         method: 'POST',
@@ -119,9 +130,14 @@ describe("SydFit Hono API Tests", () => {
       assert.equal(res.status, 200);
       const data = await res.json();
       assert.equal(data.success, true);
-      assert.equal(data.reply, "Wear a t-shirt.");
+      assert.equal(data.message, "Bark push triggered successfully.");
       assert.equal(weatherMock.getWeather.mock.callCount(), 1);
       assert.equal(openaiMock.generateClothingRecommendation.mock.callCount(), 1);
+
+      // Assert Bark was triggered with the clothing recommendation
+      assert.equal(barkMock.sendBarkNotification.mock.callCount(), 1);
+      const barkArgs = barkMock.sendBarkNotification.mock.calls[0].arguments[1];
+      assert.equal(barkArgs.body, "Wear a t-shirt.");
     });
   });
 

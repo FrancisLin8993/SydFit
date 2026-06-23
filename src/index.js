@@ -1,7 +1,7 @@
-// src/index.js
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { swaggerUI } from '@hono/swagger-ui';
+
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
 import { generateClothingRecommendation } from "./openai.js";
@@ -13,11 +13,13 @@ import { determineIntentAndMode } from "./intentRouter.js";
 const app = new Hono();
 const config = loadConfig();
 
-
 app.use('*', async (c, next) => {
+  // 🔓 Whitelist: Bypass Swagger UI interface and OpenAPI JSON data source
   if (c.req.path.startsWith('/swagger') || c.req.path === '/doc') {
     return next();
   }
+
+  // 🔒 Core API authentication logic
   const token = c.req.header('x-sydfit-token');
   if (!config.sydFitApiKey || token !== config.sydFitApiKey) {
     console.warn("⚠️ Unauthorized access attempt intercepted.");
@@ -27,13 +29,14 @@ app.use('*', async (c, next) => {
   await next();
 });
 
+
 app.get('/doc', (c) => {
   return c.json({
     openapi: '3.0.0',
     info: {
       title: 'SydFit Personal Assistant API',
       version: '1.0.0',
-      description: 'The personal assistant running on Cloud Run.'
+      description: 'The serverless brain running on Cloud Run, monitoring Sydney transport and weather.'
     },
     components: {
       securitySchemes: {
@@ -54,7 +57,7 @@ app.get('/doc', (c) => {
             required: true,
             content: {
               'application/json': {
-                schema: { type: 'object', properties: { query: { type: 'string', example: 'train' } } }
+                schema: { type: 'object', properties: { query: { type: 'string', example: 'Is the T8 line delayed today?' } } }
               }
             }
           },
@@ -65,7 +68,7 @@ app.get('/doc', (c) => {
       },
       '/api/cron': {
         post: {
-          summary: 'Daily Morning Briefing',
+          summary: 'Daily Morning Briefing (Cloud Scheduler)',
           description: 'Triggers the daily Bark notifications for weather and transit.',
           responses: {
             200: { description: 'Bark notifications sent' }
@@ -80,76 +83,110 @@ app.get('/swagger', swaggerUI({ url: '/doc' }));
 
 
 app.post('/api/ask', async (c) => {
-  const traces = [];
-  
   try {
     const { query } = await c.req.json();
-    traces.push(`📥 Received client request: "${query}"`);
+    console.log(`[Ask API] 📥 Received client request: "${query}"`);
 
+    // 3.1 Process personal memory storage intent
     if (query.toLowerCase().startsWith("personal")) {
       const actualPreference = query.replace(/^personal[:]?\s*/i, "").trim();
-      traces.push(`📥 [Processing memory] Extract preferences: "${actualPreference}"`);
+      console.log(`[Ask API] 📥 [Memory Processor] Extracted preference: "${actualPreference}"`);
 
       let replyText = "";
       if (!actualPreference) {
-        replyText = "❌ Save failed: Preference cannot be empty";
+        replyText = "❌ Storage failed: Preference content cannot be empty.";
       } else {
         const isSaved = await addPreferenceToMemory(config, actualPreference);
         replyText = isSaved 
-          ? `🧠 Preference has been added`
-          : "❌ Memory cluster failed to load. Please check mem0 status.";
+          ? `🧠 SydFit has remembered this preference for you.`
+          : "❌ Memory cluster sync failed. Please check Mem0 status.";
       }
       
-      traces.push(replyText);
-      return c.json({ success: true, traces, reply: replyText });
+      console.log(`[Ask API] Memory processing result: ${replyText}`);
+      await sendBarkNotification(config, {
+        title: "🧠 SydFit Memory Sync",
+        subtitle: "Personal Preference Logged",
+        body: replyText,
+      });
+      return c.json({ success: true, message: "Bark sent" });
     }
 
-    traces.push("🧠 Searching memory for transport preferences...");
-    const transportMemory = await getRelevantMemories(config, query, "preferred public transport mode commuting sydney");
-    traces.push(`💾 Memory loaded: "${transportMemory || ''}"`);
+    // 3.2 Core intent routing
+    console.log("[Ask API] 🧠 Retrieving transport preferences from memory bank...");
+    const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
 
     const routingResult = await determineIntentAndMode(config, query, transportMemory);
-    traces.push(`🔀 [LLM Routing] Decision result: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || 'N/A'}]`);
+    console.log(`[Ask API] 🔀 [LLM Router] Decision: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || 'N/A'}]`);
 
     let aiReply = "";
+    let pushTitle = "💬 SydFit Assistant";
+    let pushSubtitle = "Real-time Query";
 
+    // 3.3 Execute corresponding Agent
     if (routingResult.intent === "traffic") {
       const targetMode = routingResult.mode || "train";
-      traces.push(`🚂 [Traffic agent] Searching TfNSW data: ${targetMode}`);
-      aiReply = await handleTrafficQuery(config, targetMode);
+      
+      // Dynamic UI text mapping
+      const pushUI = {
+        "lightrail": { title: "🚊 Sydney Traffic Alert", sub: "Light Rail Status" },
+        "metro": { title: "🚇 Sydney Traffic Alert", sub: "Metro Network Status" },
+        "bus": { title: "🚌 Sydney Traffic Alert", sub: "Bus Network Status" },
+        "ferry": { title: "⛴️ Sydney Traffic Alert", sub: "Ferry Network Status" },
+        "train": { title: "🚆 Sydney Traffic Alert", sub: "Train Network Status" }
+      };
+
+      pushTitle = pushUI[targetMode]?.title || pushUI["train"].title;
+      pushSubtitle = pushUI[targetMode]?.sub || pushUI["train"].sub;
+
+      console.log(`[Ask API] 🚂 [Traffic Agent] Retrieving TfNSW network: ${targetMode}`);
+      aiReply = await handleTrafficQuery(config, query, targetMode); 
+      
     } else {
-      traces.push(`☀️ [Weather agent] Retrieving weather forecast and generating clothing recommendation...`);
+      console.log(`[Ask API] ☀️ [Weather Agent] Fetching current weather and outfit advice...`);
       const weather = await getWeather(config);
       aiReply = await generateClothingRecommendation(config, query, weather);
+      
+      pushTitle = "☀️ Mascot Outfit Suggestion";
+      pushSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
     }
 
-    traces.push(`✅ Workflow completed.`);
-    
-    return c.json({
-      success: true,
-      traces: traces,
-      reply: aiReply
+    console.log(`[Ask API] ✅ Processing complete, triggering Bark push notification...`);
+    await sendBarkNotification(config, {
+      title: pushTitle,
+      subtitle: pushSubtitle,
+      body: aiReply,
     });
+
+    // 3.4 Return an extremely lightweight response to close the HTTP connection after successful push
+    return c.json({ success: true, message: "Bark push triggered successfully." });
 
   } catch (error) {
     console.error("❌ /api/ask Error:", error);
-    return c.json({ success: false, error: error.message, traces }, 500);
+    
+    // Send Bark notification even on exceptions
+    await sendBarkNotification(config, {
+      title: "❌ SydFit API Error",
+      subtitle: "Ask Endpoint Exception",
+      body: error.message,
+    });
+    
+    return c.json({ success: false, error: error.message }, 500);
   }
 });
 
 
 app.post('/api/cron', async (c) => {
-  console.log(`⏰ [Cron] Daily schedule job triggered`);
+  console.log(`⏰ [Cron] Triggering daily morning briefing task...`);
 
   try {
     const [weather, trafficReport] = await Promise.all([
       getWeather(config),
-      handleTrafficQuery(config, "train"),
+      handleTrafficQuery(config, "Morning commute status", "train"), 
     ]);
 
     const trafficError = buildTransitErrorMessage(trafficReport);
     if (trafficError) {
-      console.error(`❌ Traffic agent error: ${trafficReport}`);
+      console.error(`❌ Traffic agent returned an error: ${trafficReport}`);
       await sendBarkNotification(config, {
         title: "❌ Transit Data Error",
         subtitle: "MCP Server / TfNSW API",
@@ -157,8 +194,8 @@ app.post('/api/cron', async (c) => {
       });
     }
 
-    const clothingRecommendation = await generateClothingRecommendation(config, weather);
-    const weatherSubtitle = `${weather.condition}, ${weather.temperatureC}°C (体感 ${weather.apparentTemperatureC}°C)`;
+    const clothingRecommendation = await generateClothingRecommendation(config, "Morning outfit", weather);
+    const weatherSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
 
     const notifications = [
       sendBarkNotification(config, {
@@ -179,7 +216,7 @@ app.post('/api/cron', async (c) => {
     }
 
     await Promise.all(notifications);
-    console.log(`✅ [Cron] Daily message pushed successfully.`);
+    console.log(`✅ [Cron] Morning briefing pushed successfully.`);
     
     return c.json({ success: true, message: "Morning briefing sent via Bark." });
 
@@ -195,16 +232,10 @@ app.post('/api/cron', async (c) => {
 });
 
 
-const port = process.env.PORT || 8080;
-console.log(`🚀 SydFit is starting on port ${port}...`);
-
 export { app };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = process.env.PORT || 8080;
-  console.log(`🚀 Sydfit is starting on port ${port}...`);
-  serve({
-    fetch: app.fetch,
-    port
-  });
+  console.log(`🚀 SydFit API starting on port ${port}...`);
+  serve({ fetch: app.fetch, port });
 }
