@@ -36,8 +36,9 @@ export async function addPreferenceToMemory(config, text) {
  */
 export async function getRelevantMemories(config, query) {
   try {
-    const gcpAuthHeaders = await getGcpAuthHeaders(config.mem0ApiUrl);
+
     if (!config.mem0ApiUrl) return "";
+    const gcpAuthHeaders = await getGcpAuthHeaders(config.mem0ApiUrl);
     const workerToken = process.env.MEM0_ACCESS_TOKEN;
     const searchEndpoint = `${config.mem0ApiUrl}/memory/search`; 
 

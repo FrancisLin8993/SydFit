@@ -8,7 +8,7 @@ export async function getGcpAuthHeaders(targetAudience) {
     const headers = await client.getRequestHeaders();
     return headers;
   } catch (error) {
-    console.error(`⚠️ 无法获取 GCP IAM Token (目标: ${targetAudience}):`, error);
+    console.error(`⚠️ Cannot get GCP IAM Token (Target audience: ${targetAudience}):`, error);
     return {};
   }
 }

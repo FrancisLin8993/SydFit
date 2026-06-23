@@ -14,7 +14,8 @@ export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
       throw new Error("MCP Access Token is missing in configuration.");
     }
 
-    const gcpAuthHeaders = await getGcpAuthHeaders(mcpServerUrl);
+    const targetAudience = new URL(mcpServerUrl).origin;
+    const gcpAuthHeaders = await getGcpAuthHeaders(targetAudience);
 
     const response = await fetcher(mcpServerUrl, {
       method: "POST",
