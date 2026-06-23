@@ -18,7 +18,7 @@ jobs:
           credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
 
       - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v1
+        uses: google-github-actions/deploy-cloudrun@v3
         with:
           service: sydfit-api
           region: australia-southeast1 # 悉尼节点
@@ -28,7 +28,7 @@ jobs:
             --allow-unauthenticated
             --min-instances=0
             --max-instances=1
-            --service-account=sydfit-identity@your-project-id.iam.gserviceaccount.com
+            --service-account=sydfit-identity@personal-assistant-mem0-499203.iam.gserviceaccount.com
           env_vars: |
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             OPENAI_MODEL=gpt-5.4-mini
