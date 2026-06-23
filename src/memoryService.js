@@ -13,7 +13,7 @@ export async function addPreferenceToMemory(config, text) {
       },
       body: JSON.stringify({
         text: text,
-        user_id: config.userId
+        user_id: 'francis'
       })
     });
 
@@ -46,7 +46,7 @@ export async function getRelevantMemories(config, query) {
       },
       body: JSON.stringify({
         context: query,
-        user_id: config.userId,
+        user_id: 'francis',
         limit: 3
       })
     });
