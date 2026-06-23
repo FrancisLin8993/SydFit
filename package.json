@@ -1,13 +1,14 @@
 {
   "name": "SydFit",
   "type": "module",
-"scripts": {
+  "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --experimental-test-module-mocks --test"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.5",
+    "@hono/swagger-ui": "^0.6.1",
     "hono": "^4.12.26",
     "openai": "^6.42.0"
   }

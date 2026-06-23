@@ -1,6 +1,7 @@
 // src/index.js
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
+import { swaggerUI } from '@hono/swagger-ui';
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
 import { generateClothingRecommendation } from "./openai.js";
@@ -14,14 +15,68 @@ const config = loadConfig();
 
 
 app.use('*', async (c, next) => {
+  if (c.req.path.startsWith('/swagger') || c.req.path === '/doc') {
+    return next();
+  }
   const token = c.req.header('x-sydfit-token');
-    if (!config.sydFitApiKey || token !== config.sydFitApiKey) {
-      console.warn("⚠️ Unauthorized access attempt intercepted.");
-      return c.json({ error: 'Unauthorized' }, 401);
+  if (!config.sydFitApiKey || token !== config.sydFitApiKey) {
+    console.warn("⚠️ Unauthorized access attempt intercepted.");
+    return c.json({ error: 'Unauthorized' }, 401);
   }
   
   await next();
 });
+
+app.get('/doc', (c) => {
+  return c.json({
+    openapi: '3.0.0',
+    info: {
+      title: 'SydFit Personal Assistant API',
+      version: '1.0.0',
+      description: 'The personal assistant running on Cloud Run.'
+    },
+    components: {
+      securitySchemes: {
+        ApiKeyAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-sydfit-token'
+        }
+      }
+    },
+    security: [{ ApiKeyAuth: [] }],
+    paths: {
+      '/api/ask': {
+        post: {
+          summary: 'Mobile Real-time Query',
+          description: 'Process intents like traffic routing, weather fetching, or memory storage.',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { query: { type: 'string', example: '悉尼火车T8今天延误吗' } } }
+              }
+            }
+          },
+          responses: {
+            200: { description: 'Successful operation' }
+          }
+        }
+      },
+      '/api/cron': {
+        post: {
+          summary: 'Daily Morning Briefing (Cloud Scheduler)',
+          description: 'Triggers the daily Bark notifications for weather and transit.',
+          responses: {
+            200: { description: 'Bark notifications sent' }
+          }
+        }
+      }
+    }
+  });
+});
+
+app.get('/swagger', swaggerUI({ url: '/doc' }));
 
 
 app.post('/api/ask', async (c) => {
