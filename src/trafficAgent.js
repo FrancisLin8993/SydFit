@@ -73,7 +73,7 @@ export async function handleTrafficQuery(config, mode = "train", options = {}) {
   
   // 🧠 传入统一的 config 对象，动态读取云端的 userId 与 mem0 路由
   const userTransitMemories = await getRelevantMemories(config, `${mode} transport commute sydney`);
-  console.log(`🧠 [Memory Bank] Retrieved transit memories for [${config.userId}]:`, userTransitMemories);
+  console.log(`🧠 [Memory Bank] Retrieved transit memories for [francis]:`, userTransitMemories);
 
   const transitError = buildTransitErrorMessage(rawAlerts);
   if (transitError) return transitError;
