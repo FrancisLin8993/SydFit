@@ -1,17 +1,17 @@
+// src/trafficAgent.js
 import OpenAI from "openai";
 import { getRelevantMemories } from "./memoryService.js";
 
-
-export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
+export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
   try {
-    const mcpServerUrl = process.env.MCP_SERVER_URL;
+    const mcpServerUrl = config.mcpServerUrl;
     if (!mcpServerUrl) {
-      throw new Error("MCP_SERVER_URL environment variable is not set");
+      throw new Error("MCP Server URL is missing in configuration.");
     }
 
-    const mcpAccessToken = process.env.MCP_ACCESS_TOKEN;
+    const mcpAccessToken = config.mcpAccessToken;
     if (!mcpAccessToken) {
-      throw new Error("MCP_ACCESS_TOKEN environment variable is not set");
+      throw new Error("MCP Access Token is missing in configuration.");
     }
 
     const response = await fetcher(mcpServerUrl, {
@@ -27,7 +27,7 @@ export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
     });
 
     if (response.status === 401) {
-      throw new Error("MCP server rejected request: invalid or missing token");
+      throw new Error("MCP server rejected request: invalid or missing token.");
     }
     if (!response.ok) throw new Error(`HTTP Error. Status code: ${response.status}`);
 
@@ -59,21 +59,21 @@ export async function fetchTfNSWStreamData(mode, fetcher = fetch) {
     return cleanData || `No active transport alerts for [${mode}] right now. Everything is running smoothly.`;
 
   } catch (error) {
-    console.error("❌ Fail to call TfNSW MCP Stream (Cloud Run):", error);
+    console.error("❌ Failed to call TfNSW MCP Stream (Cloud Run):", error);
     return `Transit data error: Cannot retrieve traffic alert. (${error.message})`;
   }
 }
 
-export async function handleTrafficQuery(config, mode = "train", options = {}) {
+export async function handleTrafficQuery(config, query, mode = "train", options = {}) {
   const client = options.client || new OpenAI();
   const fetcher = options.fetcher || fetch;
-  console.log(`🚗 [Traffic Agent] Retrieving [${mode}] real time alert...`);
-
-  const rawAlerts = await fetchTfNSWStreamData(mode, fetcher);
   
-  // 🧠 传入统一的 config 对象，动态读取云端的 userId 与 mem0 路由
+  console.log(`🚗 [Traffic Agent] Retrieving [${mode}] real-time alert...`);
+
+  const rawAlerts = await fetchTfNSWStreamData(config, mode, fetcher);
+  
   const userTransitMemories = await getRelevantMemories(config, `${mode} transport commute sydney`);
-  console.log(`🧠 [Memory Bank] Retrieved transit memories for [francis]:`, userTransitMemories);
+  console.log(`🧠 [Memory Bank] Retrieved transit memories for [Francis]:`, userTransitMemories);
 
   const transitError = buildTransitErrorMessage(rawAlerts);
   if (transitError) return transitError;
@@ -89,10 +89,10 @@ Code of Conduct:
 3. Response must be highly concise with no fluff, perfect for mobile Bark or Apple Shortcuts.`;
 
   const response = await client.chat.completions.create({
-    model: config.openaiModel, // 顺手对齐配置里指定的模型
+    model: config.openaiModel, // Uses the model specified in the centralized config
     messages: [
       { role: "system", content: systemContent },
-      { role: "user", content: `User prompt: "${config.userPrompt}"\n\nReal time alert from TfNSW MCP server:\n${rawAlerts}` }
+      { role: "user", content: `User prompt: "${query}"\n\nReal time alert from TfNSW MCP server:\n${rawAlerts}` }
     ]
   });
 

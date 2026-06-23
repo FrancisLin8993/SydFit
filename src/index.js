@@ -105,7 +105,7 @@ app.post('/api/ask', async (c) => {
     }
 
     traces.push("🧠 Searching memory for transport preferences...");
-    const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
+    const transportMemory = await getRelevantMemories(config, query, "preferred public transport mode commuting sydney");
     traces.push(`💾 Memory loaded: "${transportMemory || ''}"`);
 
     const routingResult = await determineIntentAndMode(config, query, transportMemory);
@@ -120,7 +120,7 @@ app.post('/api/ask', async (c) => {
     } else {
       traces.push(`☀️ [Weather agent] Retrieving weather forecast and generating clothing recommendation...`);
       const weather = await getWeather(config);
-      aiReply = await generateClothingRecommendation(config, weather);
+      aiReply = await generateClothingRecommendation(config, query, weather);
     }
 
     traces.push(`✅ Workflow completed.`);

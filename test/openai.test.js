@@ -41,7 +41,7 @@ test("generateClothingRecommendation sends Responses API request and trims text"
     };
   };
 
-  const recommendation = await generateClothingRecommendation(config, { condition: "Clear sky" }, fetcher);
+  const recommendation = await generateClothingRecommendation(config, 'weather', { condition: "Clear sky" }, fetcher);
 
   assert.equal(request.url, "https://api.openai.com/v1/responses");
   assert.equal(request.options.method, "POST");
@@ -61,14 +61,14 @@ test("generateClothingRecommendation includes optional user prompt", async () =>
     };
   };
 
-  await generateClothingRecommendation({ ...config, userPrompt: "office day, dinner after work" }, {}, fetcher);
+  await generateClothingRecommendation(config, 'office day, dinner after work', {}, fetcher);
 
   assert.match(requestBody.input, /User context or request from iPhone Shortcut/);
   assert.match(requestBody.input, /office day, dinner after work/);
 });
 
 test("buildRecommendationInput omits empty user prompt", () => {
-  const input = buildRecommendationInput({ condition: "Clear sky" }, "   ");
+  const input = buildRecommendationInput({ condition: "Clear sky" }, '');
   assert.match(input, /Clear sky/);
   assert.doesNotMatch(input, /User context or request/);
 });
@@ -82,7 +82,7 @@ test("generateClothingRecommendation throws on failed OpenAI response", async ()
   });
 
   await assert.rejects(
-    () => generateClothingRecommendation(config, {}, fetcher),
+    () => generateClothingRecommendation(config, '', {}, fetcher),
     /OpenAI Responses API request failed: 401 Unauthorized bad key/
   );
 });
@@ -94,7 +94,7 @@ test("generateClothingRecommendation throws when no output text is present", asy
   });
 
   await assert.rejects(
-    () => generateClothingRecommendation(config, {}, fetcher),
+    () => generateClothingRecommendation(config, '', {}, fetcher),
     /OpenAI response did not include output text/
   );
 });

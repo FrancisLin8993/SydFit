@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test, { beforeEach, afterEach } from "node:test";
+import test from "node:test"; // 移除了 beforeEach 和 afterEach
 
 import {
   buildTransitErrorMessage,
@@ -9,7 +9,6 @@ import {
   summarizeMcpError
 } from "../src/trafficAgent.js";
 
-// 构造一个基础的符合全局使用的伪造配置对象
 const mockConfig = {
   openaiApiKey: "fake-key",
   openaiModel: "gpt-4o-mini",
@@ -21,7 +20,9 @@ const mockConfig = {
   userPrompt: "morning commute",
   runOnStart: false,
   userId: "francis",
-  mem0ApiUrl: "https://fake-mem0.run"
+  mem0ApiUrl: "https://fake-mem0.run",
+  mcpServerUrl: "https://fake-mcp-server.run/stream",
+  mcpAccessToken: "fake-token"
 };
 
 function streamResponse(text) {
@@ -36,18 +37,6 @@ function streamResponse(text) {
     })
   };
 }
-
-// 🔑 在每个测试用例运行前，统一注入云端所需的配置环境变量，确保 fetchTfNSWStreamData 校验通过
-beforeEach(() => {
-  process.env.MCP_SERVER_URL = "https://fake-mcp-server.run/stream";
-  process.env.MCP_ACCESS_TOKEN = "fake-token";
-});
-
-// 🔑 在每个测试用例运行后，统一清理现场，防止污染其他测试文件的环境变量
-afterEach(() => {
-  delete process.env.MCP_SERVER_URL;
-  delete process.env.MCP_ACCESS_TOKEN;
-});
 
 test("containsMcpError detects MCP system error tags explicitly", () => {
   assert.equal(containsMcpError("Error: TfNSW API key missing"), false);
@@ -82,6 +71,16 @@ test("buildTransitErrorMessage formats transit section error", () => {
   );
 });
 
+test("fetchTfNSWStreamData returns error when config is missing MCP URL", async (t) => {
+  t.mock.method(console, "error", () => {});
+  
+  const badConfig = { ...mockConfig, mcpServerUrl: "" };
+  const fetcher = async () => {};
+
+  const result = await fetchTfNSWStreamData(badConfig, "train", fetcher);
+  assert.equal(result, "Transit data error: Cannot retrieve traffic alert. (MCP Server URL is missing in configuration.)");
+});
+
 test("fetchTfNSWStreamData returns a transit error message on request failure", async (t) => {
   t.mock.method(console, "error", () => {});
 
@@ -89,21 +88,21 @@ test("fetchTfNSWStreamData returns a transit error message on request failure", 
     throw new Error("network offline");
   };
 
-  const result = await fetchTfNSWStreamData("train", fetcher);
+  const result = await fetchTfNSWStreamData(mockConfig, "train", fetcher);
   assert.equal(result, "Transit data error: Cannot retrieve traffic alert. (network offline)");
 });
 
 test("fetchTfNSWStreamData strips MCP stream wrapper", async () => {
   const fetcher = async () => streamResponse("[STATUS] running\ndata: [RESULT_START]\nNo current alerts\n[RESULT_END]\n");
 
-  const result = await fetchTfNSWStreamData("train", fetcher);
+  const result = await fetchTfNSWStreamData(mockConfig, "train", fetcher);
   assert.equal(result, "No current alerts");
 });
 
 test("fetchTfNSWStreamData falls back to safe text when stream is empty", async () => {
   const fetcher = async () => streamResponse("[STATUS] running\ndata: [RESULT_START]\n\n[RESULT_END]\n");
 
-  const result = await fetchTfNSWStreamData("train", fetcher);
+  const result = await fetchTfNSWStreamData(mockConfig, "train", fetcher);
   assert.equal(result, "No active transport alerts for [train] right now. Everything is running smoothly.");
 });
 
@@ -121,14 +120,13 @@ test("handleTrafficQuery bypasses OpenAI when MCP returns a systemic error tag",
   };
   const fetcher = async () => streamResponse("data: [RESULT_START]\n[ERROR] invalid TfNSW response\n[RESULT_END]\n");
 
-  const result = await handleTrafficQuery(mockConfig, "train", { client, fetcher });
+  const result = await handleTrafficQuery(mockConfig, "Is the train delayed?", "train", { client, fetcher });
   assert.equal(result, "Transit data error: [ERROR] invalid TfNSW response");
 });
 
 test("handleTrafficQuery uses OpenAI when MCP response has no system error tags", async (t) => {
   t.mock.method(console, "log", () => {});
   
-  // 拦截全局 fetch，让内部的 memoryService 请求直接返回空数组，不影响核心逻辑
   t.mock.method(global, "fetch", async () => {
     return { ok: true, json: async () => [] };
   });
@@ -147,7 +145,8 @@ test("handleTrafficQuery uses OpenAI when MCP response has no system error tags"
 
   const fetcher = async () => streamResponse("data: [RESULT_START]\nError: Trackwork on T1 Western Line\n[RESULT_END]\n");
 
-  const result = await handleTrafficQuery(mockConfig, "train", { client, fetcher });
+  const result = await handleTrafficQuery(mockConfig, "Is the train delayed?", "train", { client, fetcher });
+  
   assert.equal(result, "Commute is smooth.");
   assert.match(userContent, /Error: Trackwork on T1 Western Line/);
 });
