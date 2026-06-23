@@ -22,7 +22,9 @@ export function loadConfigFromEnv(env) {
     barkGroup: env.BARK_GROUP || "Weather",
     barkLevel: env.BARK_LEVEL || "active",
     scheduleTimezone: env.SCHEDULE_TIMEZONE || "Australia/Sydney",
-    mem0ApiUrl: trimTrailingSlash(env.MEM0_API_URL || "")
+    mem0ApiUrl: trimTrailingSlash(env.MEM0_API_URL || ""),
+    mcpServerUrl: env.MCP_SERVER_URL,
+    mcpAccessToken: env.MCP_ACCESS_TOKEN
   };
 }
 

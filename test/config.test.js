@@ -8,7 +8,8 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     OPENAI_API_KEY: "openai-key",
     BARK_DEVICE_KEY: "bark-key",
     BARK_SERVER_URL: "https://example.com///",
-    SYDFIT_API_KEY: "test-sydfit-key"
+    SYDFIT_API_KEY: "test-sydfit-key",
+    MCP_ACCESS_TOKEN: "test-mcp-access-key"
   });
 
   assert.deepEqual(config, {
@@ -20,7 +21,9 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     barkGroup: "Weather",
     barkLevel: "active",
     scheduleTimezone: "Australia/Sydney",
-    mem0ApiUrl: ""
+    mem0ApiUrl: "",
+    mcpServerUrl: undefined,
+    mcpAccessToken: "test-mcp-access-key"
   });
 });
 
