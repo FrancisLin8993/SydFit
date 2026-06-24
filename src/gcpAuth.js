@@ -5,7 +5,7 @@ const auth = new GoogleAuth();
 export async function getGcpAuthHeaders(targetAudience) {
   try {
     const client = await auth.getIdTokenClient(targetAudience);
-    const headers = await client.getRequestHeaders();
+    const headers = await client.getRequestHeaders(targetAudience);
     console.log("✅ [Auth] Token fetched successfully.");
     return headers;
   } catch (error) {
