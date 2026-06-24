@@ -71,23 +71,50 @@ describe("SydFit Hono API Tests", () => {
 
   describe("📱 POST /api/ask (Mobile Real-time Endpoint)", () => {
     
-    test("🧠 Personal Memory Branch: Should save preference and trigger Bark push", async () => {
+    test("🧠 Memory Intent Branch: Should save extracted preference and trigger Bark push", async () => {
+      memoryServiceMock.getRelevantMemories.mock.mockImplementation(() => Promise.resolve(""));
+      intentRouterMock.determineIntentAndMode.mock.mockImplementation(() =>
+        Promise.resolve({ intent: 'memory', mode: null, preference: 'I like cold coffee' })
+      );
       memoryServiceMock.addPreferenceToMemory.mock.mockImplementation(() => Promise.resolve(true));
       barkMock.sendBarkNotification.mock.mockImplementation(() => Promise.resolve());
 
       const res = await app.request('/api/ask', {
         method: 'POST',
         headers: { 'x-sydfit-token': 'test-secret-key', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: 'personal: I like cold coffee' })
+        body: JSON.stringify({ query: 'remember that I like cold coffee' })
       });
 
       assert.equal(res.status, 200);
       const data = await res.json();
       assert.equal(data.success, true);
       assert.equal(memoryServiceMock.addPreferenceToMemory.mock.callCount(), 1);
+      assert.equal(
+        memoryServiceMock.addPreferenceToMemory.mock.calls[0].arguments[1],
+        'I like cold coffee'
+      );
       assert.equal(barkMock.sendBarkNotification.mock.callCount(), 1);
       const barkArgs = barkMock.sendBarkNotification.mock.calls[0].arguments[1];
       assert.match(barkArgs.body, /SydFit has remembered this preference/);
+    });
+
+    test("🧠 Memory Intent Branch: Should report failure when no preference can be extracted", async () => {
+      memoryServiceMock.getRelevantMemories.mock.mockImplementation(() => Promise.resolve(""));
+      intentRouterMock.determineIntentAndMode.mock.mockImplementation(() =>
+        Promise.resolve({ intent: 'memory', mode: null, preference: '' })
+      );
+      barkMock.sendBarkNotification.mock.mockImplementation(() => Promise.resolve());
+
+      const res = await app.request('/api/ask', {
+        method: 'POST',
+        headers: { 'x-sydfit-token': 'test-secret-key', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'remember' })
+      });
+
+      assert.equal(res.status, 200);
+      assert.equal(memoryServiceMock.addPreferenceToMemory.mock.callCount(), 0);
+      const barkArgs = barkMock.sendBarkNotification.mock.calls[0].arguments[1];
+      assert.match(barkArgs.body, /No preference could be detected/);
     });
 
     test("🚂 Traffic Intent Branch: Should route to traffic agent and trigger Bark push", async () => {

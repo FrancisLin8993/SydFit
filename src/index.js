@@ -88,22 +88,29 @@ app.post('/api/ask', async (c) => {
     const { query } = await c.req.json();
     writeLog("INFO", `Ask API] 📥 Received client request: "${query}"`);
 
-    // 3.1 Process personal memory storage intent
-    if (query.toLowerCase().startsWith("personal")) {
-      const actualPreference = query.replace(/^personal[:]?\s*/i, "").trim();
-      writeLog("INFO",`[Ask API] 📥 [Memory Processor] Extracted preference: "${actualPreference}"`);
+    // 3.1 Core intent routing (memory / traffic / weather)
+    writeLog("INFO", "[Ask API] 🧠 Retrieving transport preferences from memory bank...");
+    const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
+
+    const routingResult = await determineIntentAndMode(config, query, transportMemory);
+    writeLog("INFO", `[Ask API] 🔀 [LLM Router] Decision: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || 'N/A'}]`);
+
+    // 3.2 Memory storage intent — user wants SydFit to remember a preference
+    if (routingResult.intent === "memory") {
+      const actualPreference = (routingResult.preference || "").trim();
+      writeLog("INFO", `[Ask API] 📥 [Memory Processor] Extracted preference: "${actualPreference}"`);
 
       let replyText = "";
       if (!actualPreference) {
-        replyText = "❌ Storage failed: Preference content cannot be empty.";
+        replyText = "❌ Storage failed: No preference could be detected to remember.";
       } else {
         const isSaved = await addPreferenceToMemory(config, actualPreference);
-        replyText = isSaved 
+        replyText = isSaved
           ? `🧠 SydFit has remembered this preference for you.`
           : "❌ Memory cluster sync failed. Please check Mem0 status.";
       }
-      
-      writeLog(`[Ask API] Memory processing result: ${replyText}`);
+
+      writeLog("INFO", `[Ask API] Memory processing result: ${replyText}`);
       await sendBarkNotification(config, {
         title: "🧠 SydFit Memory Sync",
         subtitle: "Personal Preference Logged",
@@ -111,13 +118,6 @@ app.post('/api/ask', async (c) => {
       });
       return c.json({ success: true, message: "Bark sent" });
     }
-
-    // 3.2 Core intent routing
-    writeLog("[Ask API] 🧠 Retrieving transport preferences from memory bank...");
-    const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
-
-    const routingResult = await determineIntentAndMode(config, query, transportMemory);
-    writeLog("INFO",`[Ask API] 🔀 [LLM Router] Decision: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || 'N/A'}]`);
 
     let aiReply = "";
     let pushTitle = "💬 SydFit Assistant";
