@@ -9,7 +9,8 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     BARK_DEVICE_KEY: "bark-key",
     BARK_SERVER_URL: "https://example.com///",
     SYDFIT_API_KEY: "test-sydfit-key",
-    MCP_ACCESS_TOKEN: "test-mcp-access-key"
+    MCP_ACCESS_TOKEN: "test-mcp-access-key",
+    MEM0_ACCESS_TOKEN: "test-mem0-access-key"
   });
 
   assert.deepEqual(config, {
@@ -22,6 +23,7 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     barkLevel: "active",
     scheduleTimezone: "Australia/Sydney",
     mem0ApiUrl: "",
+    mem0AccessToken: "test-mem0-access-key",
     mcpServerUrl: undefined,
     mcpAccessToken: "test-mcp-access-key"
   });
