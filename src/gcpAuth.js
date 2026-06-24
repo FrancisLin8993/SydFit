@@ -1,5 +1,5 @@
-// src/gcpAuth.js
 import { GoogleAuth } from 'google-auth-library';
+import { writeLog } from './logger.js';
 
 const auth = new GoogleAuth();
 
@@ -19,14 +19,14 @@ export async function getGcpAuthHeaders(targetAudience) {
     }
 
     if (!plainHeaders.Authorization && !plainHeaders.authorization) {
-      console.warn("⚠️ [Auth] Headers fetched but no Authorization key found:", plainHeaders);
+      writeLog("WARNING", "⚠️ [Auth] Headers fetched but no Authorization key found:", plainHeaders)
     } else {
-      console.log("✅ [Auth] Token fetched successfully via SDK.");
+      writeLog("INFO", "✅ [Auth] Token fetched successfully via SDK.");
     }
 
     return plainHeaders;
   } catch (error) {
-    console.error("❌ [Auth] Failed to fetch ID Token via SDK:", error);
+    writeLog("ERROR", "Failed to fetch ID Token via SDK", { error: error.message });
     return {};
   }
 }

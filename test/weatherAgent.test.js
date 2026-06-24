@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { first, getWeather, normalizeWeather } from "../src/weather.js";
+import { first, getWeather, normalizeWeather } from "../src/weatherAgent.js";
 
 const openMeteoPayload = {
   current: {

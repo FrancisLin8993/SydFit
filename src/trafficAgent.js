@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { getRelevantMemories } from "./memoryService.js";
+import { writeLog } from "./logger.js"; 
 
 export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
   try {
@@ -16,7 +17,6 @@ export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
 
     const gcpAuthHeaders = await getGcpAuthHeaders(mcpServerUrl);
     const fetchUrl = `${mcpServerUrl}/stream`;
-    console.log(`fetch url: ${fetchUrl}`);
     const response = await fetcher(fetchUrl, {
       method: "POST",
       headers: {
@@ -63,7 +63,7 @@ export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
     return cleanData || `No active transport alerts for [${mode}] right now. Everything is running smoothly.`;
 
   } catch (error) {
-    console.error("❌ Failed to call TfNSW MCP Stream (Cloud Run):", error);
+    writeLog("ERROR", "❌ Failed to call TfNSW MCP Stream (Cloud Run):", error);
     return `Transit data error: Cannot retrieve traffic alert. (${error.message})`;
   }
 }
@@ -72,12 +72,12 @@ export async function handleTrafficQuery(config, query, mode = "train", options 
   const client = options.client || new OpenAI();
   const fetcher = options.fetcher || fetch;
   
-  console.log(`🚗 [Traffic Agent] Retrieving [${mode}] real-time alert...`);
+  writeLog("INFO", `🚗 [Traffic Agent] Retrieving [${mode}] real-time alert...`);
 
   const rawAlerts = await fetchTfNSWStreamData(config, mode, fetcher);
   
   const userTransitMemories = await getRelevantMemories(config, `${mode} transport commute sydney`);
-  console.log(`🧠 [Memory Bank] Retrieved transit memories for [Francis]:`, userTransitMemories);
+  writeLog("INFO", `🧠 [Memory Bank] Retrieved transit memories for [Francis]:`, userTransitMemories);
 
   const transitError = buildTransitErrorMessage(rawAlerts);
   if (transitError) return transitError;

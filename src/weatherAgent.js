@@ -1,5 +1,6 @@
 import { describeWeatherCode } from "./weatherCodes.js";
 import { getRelevantMemories } from "./memoryService.js";
+import { writeLog } from "./logger.js";
 
 const DEFAULT_COORDINATES = {
   latitude: -33.928,
@@ -33,7 +34,7 @@ async function getCoordinatesFromLocation(locationQuery, fetcher = fetch) {
       };
     }
   } catch (error) {
-    console.error(`❌ [Geocoding Error] Failed to resolve "${locationQuery}":`, error);
+    writeLog("ERROR",`❌ [Geocoding Error] Failed to resolve "${locationQuery}":`, error);
   }
   
   return DEFAULT_COORDINATES;
@@ -45,11 +46,11 @@ export async function getWeather(config, fetcher = fetch) {
   const timezone = config.scheduleTimezone || "Australia/Sydney";
 
   const locationMemory = await getRelevantMemories(config, "preferred location, suburb, or city for weather forecast");
-  console.log(`🧠 [Memory] Retrieved weather location query: "${locationMemory || 'None'}"`);
+  writeLog("INFO", `🧠 [Memory] Retrieved weather location query: "${locationMemory || 'None'}"`);
 
   const targetLocation = locationMemory || "Mascot"; 
   const coords = await getCoordinatesFromLocation(targetLocation, fetcher);
-  console.log(`📍 [Location] Resolved to: ${coords.name} (${coords.latitude}, ${coords.longitude})`);
+  writeLog("INFO", `📍 [Location] Resolved to: ${coords.name} (${coords.latitude}, ${coords.longitude})`);
 
   const params = new URLSearchParams({
     latitude: String(coords.latitude),

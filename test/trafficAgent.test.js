@@ -7,7 +7,6 @@ mock.module("../src/gcpAuth.js", {
   }
 });
 
-// 🔑 Use dynamic import so the mock takes effect
 const {
   buildTransitErrorMessage,
   containsMcpError,

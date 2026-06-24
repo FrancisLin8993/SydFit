@@ -1,4 +1,3 @@
-// test/intentRouter.test.js
 import assert from "node:assert/strict";
 import test from "node:test";
 import { determineIntentAndMode } from "../src/intentRouter.js";
@@ -8,7 +7,6 @@ const mockConfig = {
   openaiModel: "gpt-4o-mini"
 };
 
-// 辅助函数：快速生成一个模拟的 OpenAI 客户端
 function createMockClient(mockedResponseContent) {
   return {
     chat: {

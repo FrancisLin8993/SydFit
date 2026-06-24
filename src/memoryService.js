@@ -1,4 +1,5 @@
 import { getGcpAuthHeaders } from "./gcpAuth.js";
+import { writeLog } from "./logger.js";
 
 export async function addPreferenceToMemory(config, text) {
   try {
@@ -27,17 +28,13 @@ export async function addPreferenceToMemory(config, text) {
     }
     return true;
   } catch (error) {
-    console.error("❌ Failed to add memory:", error);
+    writeLog("ERROR", "Failed to add memory", { error: error.message });
     return false;
   }
 }
 
-/**
- * 2. 根据主题检索相关记忆
- */
 export async function getRelevantMemories(config, query) {
   try {
-
     if (!config.mem0ApiUrl) return "";
     const gcpAuthHeaders = await getGcpAuthHeaders(config.mem0ApiUrl);
     const workerToken = process.env.MEM0_ACCESS_TOKEN;
@@ -59,20 +56,14 @@ export async function getRelevantMemories(config, query) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Memory search error: ${response.status} - ${errorText}`);
+      writeLog("ERROR", "Memory search error", { status: response.status, error: errorText });
       return "";
     }
     
     const responseData = await response.json();
-    
-    const memories = responseData.memories;
-    
-    if (Array.isArray(memories)) {
-      return memories.map(m => m.memory || m.text).filter(Boolean).join("; ");
-    }
-    return "";
+    return responseData.memories || [];
   } catch (error) {
-    console.error("❌ Failed to search memory:", error);
-    return "";
+    writeLog("ERROR", "Failed to retrieve memories", { error: error.message });
+    return [];
   }
 }

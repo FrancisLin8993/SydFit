@@ -12,7 +12,7 @@ mock.module("../src/config.js", {
 });
 
 mock.module("../src/bark.js", { namedExports: { sendBarkNotification: mock.fn() } });
-mock.module("../src/weather.js", { namedExports: { getWeather: mock.fn() } });
+mock.module("../src/weatherAgent.js", { namedExports: { getWeather: mock.fn() } });
 mock.module("../src/openai.js", { namedExports: { generateClothingRecommendation: mock.fn() } });
 mock.module("../src/trafficAgent.js", { 
   namedExports: { 

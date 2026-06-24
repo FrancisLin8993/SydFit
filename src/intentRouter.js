@@ -1,5 +1,5 @@
-// src/intentRouter.js
 import OpenAI from "openai";
+import { writeLog } from './logger.js';
 
 export async function determineIntentAndMode(config, userPrompt, transportMemory, options = {}) {
   const client = options.client || new OpenAI({ apiKey: config.openaiApiKey });
@@ -34,7 +34,7 @@ Constraint: You MUST respond in pure JSON format matching this schema:
     const result = JSON.parse(response.choices[0].message.content);
     return result;
   } catch (error) {
-    console.error("❌ LLM Router failed, falling back to safe default:", error);
+    writeLog("ERROR", "❌ LLM Router failed, falling back to safe default:", error);
     return { intent: "traffic", mode: "train" }; 
   }
 }

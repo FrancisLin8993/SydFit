@@ -1,4 +1,4 @@
-// src/bark.js
+import { writeLog } from "./logger.js";
 
 // 1. Add fetcher parameter for dependency injection in tests
 export async function sendBarkNotification(config, notification, fetcher = fetch) {
@@ -6,7 +6,7 @@ export async function sendBarkNotification(config, notification, fetcher = fetch
     const { barkServerUrl, barkDeviceKey, barkGroup, barkLevel } = config;
 
     if (!barkDeviceKey) {
-      console.warn("⚠️ [Bark] Device key missing. Skipping push notification.");
+      writeLog("WARNING", "Bark Device key missing. Skipping push notification.");
       return;
     }
 
@@ -33,10 +33,9 @@ export async function sendBarkNotification(config, notification, fetcher = fetch
       throw new Error(`Bark HTTP ${response.status}: ${errorDetails}`);
     }
 
-    console.log(`✅ [Bark] Notification sent successfully (Title: "${notification.title}").`);
+    writeLog("INFO", "Bark notification sent successfully", { title: notification.title });
   } catch (error) {
-    console.error("❌ [Bark] Failed to send push notification:", error);
-    // 2. Re-throw the error so unit tests and the caller (index.js) can catch it
+    writeLog("ERROR", "Failed to send push notification", { error: error.message });
     throw error; 
   }
 }
