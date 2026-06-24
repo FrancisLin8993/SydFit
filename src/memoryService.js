@@ -2,12 +2,13 @@ import { getGcpAuthHeaders } from "./gcpAuth.js";
 
 export async function addPreferenceToMemory(config, text) {
   try {
-    if (!config.mem0ApiUrl) throw new Error("MEM0_API_URL is not configured in config");
-    const gcpAuthHeaders = await getGcpAuthHeaders(config.mem0ApiUrl);
-    const mem0AccessToken = process.env.MEM0_ACCESS_TOKEN;
+    const mem0ApiUrl = config.mem0ApiUrl;
+    if (!mem0ApiUrl) throw new Error("MEM0_API_URL is not configured in config");
+    const mem0AccessToken = config.mem0AccessToken;
     if (!mem0AccessToken) throw new Error("MEM0_ACCESS_TOKEN is missing for memory service");
-
-    const response = await fetch(`${config.mem0ApiUrl}/memory/add`, {
+    
+    const gcpAuthHeaders = await getGcpAuthHeaders(mem0ApiUrl);
+    const response = await fetch(`${mem0ApiUrl}/memory/add`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
