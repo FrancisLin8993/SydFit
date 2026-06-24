@@ -34,7 +34,7 @@ const barkMock = await import("../src/bark.js");
 const intentRouterMock = await import("../src/intentRouter.js");
 const memoryServiceMock = await import("../src/memoryService.js");
 const trafficAgentMock = await import("../src/trafficAgent.js");
-const weatherMock = await import("../src/weather.js");
+const weatherMock = await import("../src/weatherAgent.js");
 const openaiMock = await import("../src/openai.js");
 
 describe("SydFit Hono API Tests", () => {
