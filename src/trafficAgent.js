@@ -15,6 +15,7 @@ export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
     }
 
     const gcpAuthHeaders = await getGcpAuthHeaders(mcpServerUrl);
+    console.log("🔍 [Auth Debug] Headers to send:", JSON.stringify(gcpAuthHeaders));
     const fetchUrl = `${mcpServerUrl}/stream`;
     console.log(`fetch url: ${fetchUrl}`);
     const response = await fetcher(fetchUrl, {
