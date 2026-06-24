@@ -1,87 +1,56 @@
 # SydFit
 
-Small Node.js service that checks local weather, asks the OpenAI Responses API for a clothing recommendation, and sends it to an iPhone using Bark.
+SydFit is a serverless personal assistant designed for Sydney residents. It fetches local weather data, leverages historical transit preferences stored in a vector database, and utilizes OpenAI's models to provide concise, actionable morning briefings (clothing recommendations and public transport alerts) via push notifications.
+
+## Core Features
+
+* **Morning Briefing**: Automatically delivers a weather-based clothing recommendation and relevant Sydney transport alerts at 7:00 AM AEST/AEDT.
+* **AI-Powered Routing**: Uses an intent router to classify user requests between "weather", "traffic" (transit) and "memory" modes.
+* **Memory Persistence**: Maintains historical user transit preferences using [Mem0](https://mem0.ai) and [Qdrant](https://qdrant.tech) to provide personalized travel advice.
+* **Structured Logging**: Implements GCP-compatible structured logging for improved observability and debugging in production.
+* **Push Notifications**: Delivers content to iPhone via [Bark](https://bark.day.app).
+
+## Architecture
+
+* **Runtime**: Node.js 24+
+* **Infrastructure**: Hosted on Google Cloud Run.
+* **External APIs**:
+* **OpenAI**: Used for clothing recommendations and intent classification.
+* **Open-Meteo**: Provides local weather data for Mascot, NSW.
+* **Transport for NSW (TfNSW)**: Accessed via a dedicated MCP (Model Context Protocol) server for real-time transit alerts.
+
+
 
 ## Setup
 
-1. Install Node.js 20.6 or newer.
-2. Copy `.env.example` to `.env`.
-3. Fill in:
-   - `OPENAI_API_KEY`
-   - `BARK_DEVICE_KEY`, copied from the Bark iOS app test URL
-4. Run the job. It sends only when the local time in `Australia/Sydney` is 7:00 AM:
+1. **Environment Variables**: Copy `.env.example` to `.env` and configure the following:
+* `OPENAI_API_KEY`: API key for OpenAI.
+* `BARK_DEVICE_KEY`: Key from the Bark iOS app.
+* `SYDFIT_API_KEY`: A custom API key to secure your SydFit endpoints.
+* `MEM0_API_URL` & `MEM0_ACCESS_TOKEN`: Configuration for your Mem0 memory service.
+* `MCP_SERVER_URL` & `MCP_ACCESS_TOKEN`: Connection details for the TfNSW MCP server.
 
+
+2. **Dependencies**: Install required packages:
 ```bash
-npm start
+npm install
+
 ```
 
-To send one notification immediately:
 
-```bash
-npm run run-once
+3. **Running the Service**:
+* Start the service locally: `npm start`
+* Run unit tests: `npm test`
+
+
 ```
-
-To run the unit tests:
-
-```bash
-npm test
-```
-
-## GitHub Actions
-
-The project includes `.github/workflows/daily-weather.yml`.
-
-GitHub Actions cron runs in UTC, while Sydney switches between AEST and AEDT. The workflow therefore runs at both possible UTC times:
-
-```yaml
-- cron: "0 20 * * *"
-- cron: "0 21 * * *"
-```
-
-`src/index.js` checks `Australia/Sydney` and sends the notification only when the local time is exactly 7:00 AM. Manual `workflow_dispatch` runs bypass that guard so you can test the notification immediately.
-
-Manual runs accept an optional `prompt` input. This is intended for iOS Shortcuts text such as `office day`, `gym after work`, or `formal dinner tonight`. The prompt is sent to the OpenAI model together with the weather, and the result is delivered through Bark in the same way as the scheduled notification.
-
-For an iOS Shortcut using GitHub's workflow dispatch API, send:
-
-```json
-{
-  "ref": "main",
-  "inputs": {
-    "prompt": "office day, gym after work"
-  }
-}
-```
-
-If your Shortcut uses `repository_dispatch`, send this instead:
-
-```json
-{
-  "event_type": "mobile_prompt",
-  "client_payload": {
-    "prompt": "office day, gym after work"
-  }
-}
-```
-
-Add these repository secrets:
-
-- `OPENAI_API_KEY`
-- `BARK_DEVICE_KEY`
-
-Optional repository variables:
-
-- `OPENAI_MODEL`
-- `BARK_SERVER_URL`
-- `BARK_GROUP`
-- `BARK_LEVEL`
 
 ## Configuration
 
-`OPENAI_MODEL` defaults to `gpt-5.4-mini`. OpenAI's model docs list latest models as available through the Responses API, and the Responses API creates a response with `POST /v1/responses`.
+* **Models**: Defaults to `gpt-4o-mini` (or configurable via `OPENAI_MODEL`).
+* **Bark**: Defaults to `https://api.day.app`, but supports self-hosted instances via `BARK_SERVER_URL`.
+* **Weather**: Coordinates are fixed to Mascot, NSW; no external API key is required.
 
-`BARK_SERVER_URL` defaults to Bark's hosted service, `https://api.day.app`. For self-hosted Bark, set it to your server origin. The app sends JSON to `/push` with `device_key`, `title`, `subtitle`, and `body`.
+## Logging
 
-`USER_PROMPT` is optional local context for manual runs. GitHub Actions sets it from `repository_dispatch.client_payload.prompt`.
-
-Weather comes from Open-Meteo using Mascot coordinates, so no weather API key is required.
+SydFit uses a structured logging utility (`logger.js`) that outputs JSON logs compatible with Google Cloud Logging. This ensures all logs contain a `severity`, `timestamp`, and relevant metadata, facilitating easier filtering and alerting within the Google Cloud operations console.
