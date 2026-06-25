@@ -1,8 +1,11 @@
 import OpenAI from "openai";
 import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { getRelevantMemories } from "./memoryService.js";
-import { writeLog } from "./logger.js"; 
+import { writeLog } from "./logger.js";
 
+/**
+ * Fetches raw alerts stream from the TfNSW MCP server
+ */
 export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
   try {
     const mcpServerUrl = config.mcpServerUrl;
@@ -17,6 +20,9 @@ export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
 
     const gcpAuthHeaders = await getGcpAuthHeaders(mcpServerUrl);
     const fetchUrl = `${mcpServerUrl}/stream`;
+    
+    writeLog("INFO", "Fetching TfNSW stream alerts via MCP server", { url: fetchUrl, mode });
+
     const response = await fetcher(fetchUrl, {
       method: "POST",
       headers: {
@@ -45,62 +51,65 @@ export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
       accumulatedText += decoder.decode(value, { stream: true });
     }
 
-    const rawText = accumulatedText
-      .split("\n")
-      .map(line => line.startsWith("data: ") ? line.slice(6) : line)
-      .join("\n");
-
-    const cleanData = rawText
-      .replace(/\[STATUS\].*?(\r?\n|$)/g, "")
-      .replace(/\[RESULT_START\]/g, "")
-      .replace(/\[RESULT_END\]/g, "")
-      .trim();
-
-    if (containsMcpError(cleanData)) {
-      return cleanData || "Transit data error: MCP server returned an error.";
-    }
-
-    return cleanData || `No active transport alerts for [${mode}] right now. Everything is running smoothly.`;
-
+    writeLog("INFO", "TfNSW stream alerts fetched successfully", { responseLength: accumulatedText.length });
+    return accumulatedText;
   } catch (error) {
-    writeLog("ERROR", "❌ Failed to call TfNSW MCP Stream (Cloud Run):", error);
-    return `Transit data error: Cannot retrieve traffic alert. (${error.message})`;
+    writeLog("ERROR", "Failed to fetch TfNSW alerts", { error: error.message });
+    throw error;
   }
 }
 
-export async function handleTrafficQuery(config, query, mode = "train", options = {}) {
-  const client = options.client || new OpenAI();
-  const fetcher = options.fetcher || fetch;
-  
-  writeLog("INFO", `🚗 [Traffic Agent] Retrieving [${mode}] real-time alert...`);
+/**
+ * Handles the traffic query, pulls real-time alerts, and filters them strictly based on user memory
+ */
+export async function handleTrafficQuery(config, query, userTransitMemories) {
+  const mcpServerUrl = config.mcpServerUrl;
+  if (!mcpServerUrl) {
+    writeLog("WARNING", "TfNSW MCP Server is not configured. Returning fallback response.");
+    return "TfNSW MCP Server is not configured. Real-time alerts are unavailable.";
+  }
 
-  const rawAlerts = await fetchTfNSWStreamData(config, mode, fetcher);
-  
-  const userTransitMemories = await getRelevantMemories(config, `${mode} transport commute sydney`);
-  writeLog("INFO", `🧠 [Memory Bank] Retrieved transit memories for [Francis]:`, userTransitMemories);
+  writeLog("INFO", "Analyzing traffic alerts with user travel preferences", { query, hasMemories: !!userTransitMemories });
 
-  const transitError = buildTransitErrorMessage(rawAlerts);
-  if (transitError) return transitError;
+  // 1. Fetch raw alerts for 'all' to ensure no relevant alert is missed during filtering
+  const rawAlerts = await fetchTfNSWStreamData(config, "all");
 
-  const systemContent = `You are a senior local public transport expert in Sydney.
-Your task is to distil the provided raw Transport for NSW real-time alert data into an easy-to-understand commute briefing for the user.
+  if (containsMcpError(rawAlerts)) {
+    writeLog("ERROR", "MCP Stream response contains system or connection errors", { rawAlerts });
+    return rawAlerts; 
+  }
 
-${userTransitMemories ? `CRITICAL - USER PREFERENCES TO OBEY:\nThe user has specified the following personal habits/preferences, historical preferences, or constraints. You MUST align your advice with these memories:\n"${userTransitMemories}"` : ""}
+  // 2. Process with OpenAI and inject transit memories to filter and generate recommendations
+  const client = new OpenAI({ apiKey: config.openaiApiKey });
+
+  const systemContent = `You are an expert Sydney transit assistant. Your task is to analyze real-time TfNSW alerts and provide a highly personalized, brief, and actionable commute report.
+Today's date and context are Sydney, Australia.
+
+${userTransitMemories ? `The user has some personal travel habits/preferences, historical preferences, or constraints. You MUST strictly align your advice with these memories:\n"${userTransitMemories}"` : ""}
+
+CRITICAL FILTER RULE:
+1. You must cross-reference the incoming real-time TfNSW alerts with the user's transit memories.
+2. ONLY report on or discuss alerts that directly affect the transit lines, routes, stations, or transit modes (e.g., T8 Airport Line, Mascot Station, City Circle, specific train lines) that the user commutes on according to their transit memories.
+3. If an alert is completely unrelated to their routes, lines, stations, or modes (for example, a bus alert when the user only takes the T8 train, or a light rail alert on a completely different line), you MUST silently ignore it.
+4. If there are active alerts in Sydney but NONE of them are relevant to the user's commute preferences, do NOT mention them. Instead, state that their commute is smooth.
 
 Code of Conduct:
-1. If the data indicates everything is normal, tell the user today's commute is smooth.
-2. If there are active alerts, clearly list the affected routes or severity, and provide reasonable travel advice.
+1. If the data indicates everything is normal, or if there are no active alerts relevant to the user's transit memories, tell the user today's commute is smooth (e.g., "Today's commute is smooth. No active alerts affect your route.").
+2. If there are relevant active alerts, clearly list the affected routes or severity, and provide reasonable travel advice.
 3. Response must be highly concise with no fluff, perfect for mobile Bark or Apple Shortcuts.`;
 
   const response = await client.chat.completions.create({
-    model: config.openaiModel, // Uses the model specified in the centralized config
+    model: config.openaiModel,
     messages: [
       { role: "system", content: systemContent },
       { role: "user", content: `User prompt: "${query}"\n\nReal time alert from TfNSW MCP server:\n${rawAlerts}` }
     ]
   });
 
-  return response.choices[0].message.content;
+  const adviceResult = response.choices[0].message.content;
+  writeLog("INFO", "Successfully generated filtered transit advice", { adviceLength: adviceResult.length });
+
+  return adviceResult;
 }
 
 export function buildTransitErrorMessage(rawAlerts) {
@@ -120,9 +129,5 @@ export function containsMcpError(rawAlerts) {
 export function summarizeMcpError(rawAlerts) {
   return String(rawAlerts || "")
     .replace(/\[STATUS\].*?(\r?\n|$)/g, "")
-    .replace(/\[RESULT_START\]/g, "")
-    .replace(/\[RESULT_END\]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 400);
+    .trim();
 }
