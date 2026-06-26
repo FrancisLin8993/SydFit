@@ -89,7 +89,7 @@ app.post('/api/ask', async (c) => {
 
     writeLog("INFO", "Received /ask request, enqueuing background task", { query });
     
-    await enqueueSydFitTask(config, '/api/process-ask', { query });
+    await enqueueSydFitTask(config, '/api/process-task', { query });
 
     return c.json({ success: true, message: "Task enqueued for background processing" }, 202);
   } catch (error) {
@@ -102,19 +102,19 @@ app.post('/api/ask', async (c) => {
 app.post('/api/process-task', async (c) => {
   try {
     const { query } = await c.req.json();
-    writeLog("INFO", `[Process Ask API] 📥 Received client request: "${query}"`);
+    writeLog("INFO", `[Process Task API] 📥 Received client request: "${query}"`);
 
     // 3.1 Core intent routing (memory / traffic / weather)
-    writeLog("INFO", "[Process Ask API] 🧠 Retrieving transport preferences from memory bank...");
+    writeLog("INFO", "[Process Task API] 🧠 Retrieving transport preferences from memory bank...");
     const userMemories = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
 
     const routingResult = await determineIntentAndMode(config, query, userMemories);
-    writeLog("INFO", `[Process Ask API] 🔀 [LLM Router] Decision: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || 'N/A'}]`);
+    writeLog("INFO", `[Process Task API] 🔀 [LLM Router] Decision: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || 'N/A'}]`);
 
     // 3.2 Memory storage intent — user wants SydFit to remember a preference
     if (routingResult.intent === "memory") {
       const actualPreference = (routingResult.preference || "").trim();
-      writeLog("INFO", `[Process Ask API] 📥 [Memory Processor] Extracted preference: "${actualPreference}"`);
+      writeLog("INFO", `[Process Task API] 📥 [Memory Processor] Extracted preference: "${actualPreference}"`);
 
       let replyText = "";
       if (!actualPreference) {
@@ -126,7 +126,7 @@ app.post('/api/process-task', async (c) => {
           : "❌ Memory cluster sync failed. Please check Mem0 status.";
       }
 
-      writeLog("INFO", `[Process Ask API] Memory processing result: ${replyText}`);
+      writeLog("INFO", `[Process Task API] Memory processing result: ${replyText}`);
       await sendBarkNotification(config, {
         title: "🧠 SydFit Memory Sync",
         subtitle: "Personal Preference Logged",
@@ -156,11 +156,11 @@ app.post('/api/process-task', async (c) => {
       pushTitle = pushUI[targetMode]?.title || pushUI["train"].title;
       pushSubtitle = pushUI[targetMode]?.sub || pushUI["train"].sub;
 
-      writeLog("INFO",`[Process Ask API] 🚂 [Traffic Agent] Retrieving TfNSW network: ${targetMode}`);
+      writeLog("INFO",`[Process Task API] 🚂 [Traffic Agent] Retrieving TfNSW network: ${targetMode}`);
       aiReply = await handleTrafficQuery(config, query, targetMode); 
       
     } else {
-      writeLog("INFO",`[Process Ask API] ☀️ [Weather Agent] Fetching current weather and outfit advice...`);
+      writeLog("INFO",`[Process Task API] ☀️ [Weather Agent] Fetching current weather and outfit advice...`);
       const weather = await getWeather(config);
       aiReply = await generateClothingRecommendation(config, query, weather);
       
@@ -168,7 +168,7 @@ app.post('/api/process-task', async (c) => {
       pushSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
     }
 
-    writeLog("INFO",`[Process Ask API] ✅ Processing complete, triggering Bark push notification...`);
+    writeLog("INFO",`[Process Task API] ✅ Processing complete, triggering Bark push notification...`);
     await sendBarkNotification(config, {
       title: pushTitle,
       subtitle: pushSubtitle,
