@@ -14,7 +14,12 @@ let langfuseSpanProcessor = null;
 
 if (isLangfuseEnabled) {
   langfuseSpanProcessor = new LangfuseSpanProcessor({
+    publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+    secretKey: process.env.LANGFUSE_SECRET_KEY,
+    baseUrl: process.env.LANGFUSE_BASE_URL || "https://jp.cloud.langfuse.com",
+    environment: process.env.NODE_ENV || "production",
     exportMode: "immediate",
+    shouldExportSpan: () => true, 
   });
 
   const sdk = new NodeSDK({
