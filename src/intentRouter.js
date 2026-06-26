@@ -1,8 +1,10 @@
+import { withHeadroom } from 'headroom-ai/openai';
 import OpenAI from "openai";
+import { compress } from 'headroom-ai';
 import { writeLog } from './logger.js';
 
 export async function determineIntentAndMode(config, userPrompt, transportMemory, options = {}) {
-  const client = options.client || new OpenAI({ apiKey: config.openaiApiKey });
+  const client = options.client || withHeadroom(new OpenAI({ apiKey: config.openaiApiKey }));
 
   const systemPrompt = `You are the core routing brain for SydFit, a Sydney-based personal assistant.
 Your task is to analyze the user's current prompt and their historical transit preferences to route the request.
