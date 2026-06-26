@@ -1,3 +1,4 @@
+import { withHeadroom } from 'headroom-ai/openai';
 import OpenAI from "openai";
 import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { getRelevantMemories } from "./memoryService.js";
@@ -105,6 +106,9 @@ Code of Conduct:
       { role: "user", content: `User prompt: "${query}"\n\nReal time alert from TfNSW MCP server:\n${rawAlerts}` }
     ]
   });
+
+  writeLog("INFO", "[Traffic Agent] Token usage: ", response.usage.total_tokens);
+
 
   const adviceResult = response.choices[0].message.content;
   writeLog("INFO", "Successfully generated filtered transit advice", { adviceLength: adviceResult.length });
