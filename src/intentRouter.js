@@ -1,10 +1,14 @@
 import { withHeadroom } from 'headroom-ai/openai';
 import OpenAI from "openai";
 import { compress } from 'headroom-ai';
+import { observeOpenAI } from "@langfuse/openai";
 import { writeLog } from './logger.js';
 
 export async function determineIntentAndMode(config, userPrompt, transportMemory, options = {}) {
-  const client = options.client || withHeadroom(new OpenAI({ apiKey: config.openaiApiKey }));
+  const client = options.client || observeOpenAI(
+    withHeadroom(new OpenAI({ apiKey: config.openaiApiKey })),
+    { generationName: "intent-router", userId: "francis" }
+  );
 
   const systemPrompt = `You are the core routing brain for SydFit, a Sydney-based personal assistant.
 Your task is to analyze the user's current prompt and their historical transit preferences to route the request.
@@ -40,7 +44,7 @@ Constraint: You MUST respond in pure JSON format matching this schema:
       temperature: 0.1
     });
 
-    writeLog("INFO", `[Intent Router] Token usage: ${response.usage.total_tokens}`);
+    writeLog("INFO", `[Intent Router] Token usage: ${response.usage?.total_tokens ?? "N/A"}`);
 
     const result = JSON.parse(response.choices[0].message.content);
     return result;

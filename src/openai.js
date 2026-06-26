@@ -1,33 +1,61 @@
+import { startObservation } from "./langfuse.js";
+
 export async function generateClothingRecommendation(config, query, weather, fetcher = fetch) {
   const userInput = buildRecommendationInput(weather, query);
-  const response = await fetcher("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.openaiApiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
+  const generation = startObservation(
+    "clothing-recommendation",
+    {
       model: config.openaiModel,
-      instructions:
-        "You write concise, practical morning clothing recommendations for someone in Sydney. Mention layers, rain gear, sun protection, and footwear only when relevant. Keep the message under 450 characters and make it suitable for a phone push notification.",
       input: userInput,
-      max_output_tokens: 160
-    })
-  });
+      modelParameters: { max_output_tokens: 160 },
+    },
+    { asType: "generation" }
+  );
 
-  if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`OpenAI Responses API request failed: ${response.status} ${response.statusText} ${details}`);
+  try {
+    const response = await fetcher("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.openaiApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: config.openaiModel,
+        instructions:
+          "You write concise, practical morning clothing recommendations for someone in Sydney. Mention layers, rain gear, sun protection, and footwear only when relevant. Keep the message under 450 characters and make it suitable for a phone push notification.",
+        input: userInput,
+        max_output_tokens: 160
+      })
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`OpenAI Responses API request failed: ${response.status} ${response.statusText} ${details}`);
+    }
+
+    const data = await response.json();
+    const text = extractOutputText(data);
+
+    if (!text) {
+      throw new Error("OpenAI response did not include output text.");
+    }
+
+    generation.update({
+      output: text,
+      model: data.model,
+      usageDetails: data.usage
+        ? { input: data.usage.input_tokens, output: data.usage.output_tokens, total: data.usage.total_tokens }
+        : undefined,
+    }).end();
+
+    return text.trim();
+  } catch (error) {
+    generation.update({
+      statusMessage: error.message,
+      level: "ERROR",
+    }).end();
+    throw error;
   }
-
-  const data = await response.json();
-  const text = extractOutputText(data);
-
-  if (!text) {
-    throw new Error("OpenAI response did not include output text.");
-  }
-
-  return text.trim();
 }
 
 export function buildRecommendationInput(weather, userPrompt = "") {

@@ -44,3 +44,6 @@ jobs:
             GCP_LOCATION=${{ secrets.GCP_LOCATION }}
             GCP_QUEUE_NAME=${{ secrets.GCP_QUEUE_NAME }}
             SYDFIT_SERVICE_URL=${{ secrets.SYDFIT_SERVICE_URL }}
+            LANGFUSE_PUBLIC_KEY=${{ secrets.LANGFUSE_PUBLIC_KEY }}
+            LANGFUSE_SECRET_KEY=${{ secrets.LANGFUSE_SECRET_KEY }}
+            LANGFUSE_BASE_URL=${{ secrets.LANGFUSE_BASE_URL }}

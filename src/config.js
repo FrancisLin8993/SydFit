@@ -29,7 +29,10 @@ export function loadConfigFromEnv(env) {
     gcpProjectId: env.GCP_PROJECT_ID,
     gcpLocation: env.GCP_LOCATION,
     gcpQueueName: env.GCP_QUEUE_NAME,
-    sydFitServiceUrl: env.SYDFIT_SERVICE_URL
+    sydFitServiceUrl: env.SYDFIT_SERVICE_URL,
+    langfusePublicKey: env.LANGFUSE_PUBLIC_KEY,
+    langfuseSecretKey: env.LANGFUSE_SECRET_KEY,
+    langfuseBaseUrl: env.LANGFUSE_BASE_URL
   };
 }
 

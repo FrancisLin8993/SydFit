@@ -1,5 +1,6 @@
 import { withHeadroom } from 'headroom-ai/openai';
 import OpenAI from "openai";
+import { observeOpenAI } from "@langfuse/openai";
 import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { getRelevantMemories } from "./memoryService.js";
 import { writeLog } from "./logger.js";
@@ -81,7 +82,10 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
   }
 
   // 2. Process with OpenAI and inject transit memories to filter and generate recommendations
-  const client = new OpenAI({ apiKey: config.openaiApiKey });
+  const client = observeOpenAI(
+    new OpenAI({ apiKey: config.openaiApiKey }),
+    { generationName: "traffic-advice", userId: "francis" }
+  );
 
   const systemContent = `You are an expert Sydney transit assistant. Your task is to analyze real-time TfNSW alerts and provide a highly personalized, brief, and actionable commute report.
 Today's date and context are Sydney, Australia.
@@ -107,7 +111,7 @@ Code of Conduct:
     ]
   });
 
-  writeLog("INFO", `[Traffic Agent] Token usage: ${response.usage.total_tokens}`);
+  writeLog("INFO", `[Traffic Agent] Token usage: ${response.usage?.total_tokens ?? "N/A"}`);
 
 
   const adviceResult = response.choices[0].message.content;

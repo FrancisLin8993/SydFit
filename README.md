@@ -29,6 +29,7 @@ SydFit is a serverless personal assistant designed for Sydney residents. It fetc
 * `SYDFIT_API_KEY`: A custom API key to secure your SydFit endpoints.
 * `MEM0_API_URL` & `MEM0_ACCESS_TOKEN`: Configuration for your Mem0 memory service.
 * `MCP_SERVER_URL` & `MCP_ACCESS_TOKEN`: Connection details for the TfNSW MCP server.
+* `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`: Langfuse credentials for LLM tracing (optional — tracing is disabled when keys are absent).
 
 
 2. **Dependencies**: Install required packages:
@@ -54,3 +55,26 @@ npm install
 ## Logging
 
 SydFit uses a structured logging utility (`logger.js`) that outputs JSON logs compatible with Google Cloud Logging. This ensures all logs contain a `severity`, `timestamp`, and relevant metadata, facilitating easier filtering and alerting within the Google Cloud operations console.
+
+## Tracing (Langfuse)
+
+SydFit integrates [Langfuse](https://langfuse.com) for LLM observability. All OpenAI calls (intent routing, traffic advice, clothing recommendations) are automatically traced as generations with model names, token usage, latencies, and errors.
+
+**Setup:**
+
+1. Create a free [Langfuse Cloud](https://cloud.langfuse.com) account (or self-host).
+2. Copy your API keys from **Settings → API Keys**.
+3. Add them to `.env`:
+   ```
+   LANGFUSE_PUBLIC_KEY=pk-lf-...
+   LANGFUSE_SECRET_KEY=sk-lf-...
+   LANGFUSE_BASE_URL=https://cloud.langfuse.com
+   ```
+4. Tracing activates automatically when the keys are present. When absent, the app runs normally with no tracing overhead.
+
+**What's traced:**
+
+* Each request (`/api/process-task`, `/api/cron`) is a trace with descriptive names and tags (`ask`, `cron`).
+* LLM calls appear as nested generations (`intent-router`, `traffic-advice`, `clothing-recommendation`).
+* Traces include `user_id`, input/output, token usage, and error status.
+* Traces are flushed before each response to ensure delivery in serverless environments.
