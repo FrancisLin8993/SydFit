@@ -40,7 +40,7 @@ Constraint: You MUST respond in pure JSON format matching this schema:
       temperature: 0.1
     });
 
-    writeLog("INFO", "open AI response: ", JSON.parse(response));
+    writeLog("INFO", "open AI response: ", response);
 
     const result = JSON.parse(response.choices[0].message.content);
     return result;
