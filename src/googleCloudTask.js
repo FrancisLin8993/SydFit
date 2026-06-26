@@ -21,7 +21,6 @@ export async function enqueueSydFitTask(config, endpoint, payload) {
   
   // The absolute URL of the Cloud Run endpoint that will process this task
   const url = `${sydFitServiceUrl}${endpoint}`;
-  writeLog("INFO", `sydfit url: ${url}`);
   const task = {
     httpRequest: {
       httpMethod: "POST",

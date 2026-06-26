@@ -14,7 +14,10 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     GCP_PROJECT_ID: "test-project-id",
     GCP_LOCATION: "australia-east",
     GCP_QUEUE_NAME: "sydfit-queue",
-    SYDFIT_SERVICE_URL: "https://test.com"
+    SYDFIT_SERVICE_URL: "https://test.com",
+    LANGFUSE_PUBLIC_KEY: "test-lf-pk",
+    LANGFUSE_SECRET_KEY: "test-lf-sk",
+    LANGFUSE_BASE_URL: "https://langfuse.com"
   });
 
   assert.deepEqual(config, {
@@ -33,7 +36,10 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     gcpProjectId: "test-project-id",
     gcpLocation: "australia-east",
     gcpQueueName: "sydfit-queue",
-    sydFitServiceUrl: "https://test.com"
+    sydFitServiceUrl: "https://test.com",
+    langfusePublicKey: "test-lf-pk",
+    langfuseSecretKey: "test-lf-sk",
+    langfuseBaseUrl: "https://langfuse.com"
   });
 });
 
