@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { swaggerUI } from '@hono/swagger-ui';
-
+import { enqueueSydFitTask } from './googleCloudTask.js';
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
 import { generateClothingRecommendation } from "./openai.js";
@@ -93,7 +93,7 @@ app.post('/api/ask', async (c) => {
 
     return c.json({ success: true, message: "Task enqueued for background processing" }, 202);
   } catch (error) {
-    writeLog("ERROR", "/ask Endpoint Failed to enqueue", { error: error.message, stack: error.stack });
+    writeLog("ERROR", "/api/ask Endpoint Failed to enqueue", { error: error.message, stack: error.stack });
     return c.json({ success: false, error: error.message }, 500);
   }
 });
