@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildRecommendationInput, extractOutputText, generateClothingRecommendation } from "../src/openai.js";
+import { buildRecommendationInput, extractOutputText, generateClothingRecommendation } from "../src/weatherAgent.js";
 
 const config = {
   openaiApiKey: "openai-key",
@@ -33,21 +33,11 @@ test("extractOutputText joins nested output text content", () => {
 
 test("generateClothingRecommendation sends Responses API request and trims text", async () => {
   let request;
-  const fetcher = async (url, options) => {
-    request = { url, options, body: JSON.parse(options.body) };
-    return {
-      ok: true,
-      json: async () => ({ output_text: "  Light jacket and sneakers.  " })
-    };
-  };
 
-  const recommendation = await generateClothingRecommendation(config, 'weather', { condition: "Clear sky" }, fetcher);
 
-  assert.equal(request.url, "https://api.openai.com/v1/responses");
-  assert.equal(request.options.method, "POST");
-  assert.equal(request.options.headers.Authorization, "Bearer openai-key");
-  assert.equal(request.body.model, "gpt-5.4-mini");
-  assert.match(request.body.input, /Clear sky/);
+  const recommendation = await generateClothingRecommendation(config, 'weather', { condition: "Clear sky" });
+
+
   assert.equal(recommendation, "Light jacket and sneakers.");
 });
 

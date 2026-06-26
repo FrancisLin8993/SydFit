@@ -5,7 +5,7 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { enqueueSydFitTask } from './googleCloudTask.js';
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
-import { generateClothingRecommendation } from "./openai.js";
+import { generateClothingRecommendation } from "./openaiClient.js";
 import { getWeather } from "./weatherAgent.js";
 import { handleTrafficQuery, buildTransitErrorMessage } from "./trafficAgent.js";
 import { addPreferenceToMemory, getRelevantMemories } from "./memoryService.js"; 

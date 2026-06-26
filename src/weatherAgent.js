@@ -1,3 +1,5 @@
+import { openaiClient } from './openaiClient.js';
+import { observeOpenAI } from "@langfuse/openai";
 import { describeWeatherCode } from "./weatherCodes.js";
 import { getRelevantMemories } from "./memoryService.js";
 import { writeLog } from "./logger.js";
@@ -7,6 +9,51 @@ const DEFAULT_COORDINATES = {
   longitude: 151.193,
   name: "Mascot, NSW"
 };
+
+export async function generateClothingRecommendation(config, query, weather, fetcher = fetch) {
+  const userInput = buildRecommendationInput(weather, query);
+  const client = observeOpenAI(openaiClient,
+    { generationName: "clothing-advice", userId: "francis" }
+  );
+  try {
+
+    const response = await client.chat.completions.create({
+      model: config.openaiModel,
+      messages: [
+        {
+          role: "system",
+          content: "You write concise, practical morning clothing recommendations for someone in Sydney. Mention layers, rain gear, sun protection, and footwear only when relevant. Keep the message under 450 characters and make it suitable for a phone push notification."
+        },
+        {
+          role: "user",
+          content: userInput
+        }
+      ],
+      max_tokens: 160
+    });
+
+    const text = response.choices[0]?.message?.content;
+    const trimmedText = text.trim();
+    return trimmedText;
+  } catch (error) {
+    writeLog("ERROR", "❌ Failed to generate output for clothing recommedation ", error);
+    throw error;
+  }
+}
+
+function buildRecommendationInput(weather, userPrompt = "") {
+  const parts = [`Create today's clothing recommendation from this weather JSON:\n${JSON.stringify(weather, null, 2)}`];
+  const trimmedPrompt = userPrompt.trim();
+
+  if (trimmedPrompt) {
+    parts.push(
+      `User context or request from iPhone Shortcut:\n${trimmedPrompt}\nUse this context when deciding what to recommend.`
+    );
+  }
+
+  return parts.join("\n\n");
+}
+
 
 async function getCoordinatesFromLocation(locationQuery, fetcher = fetch) {
   if (!locationQuery) return DEFAULT_COORDINATES;

@@ -48,7 +48,6 @@ test("determineIntentAndMode detects weather intent and returns null mode", asyn
 test("determineIntentAndMode relies on memory for generic traffic queries", async (t) => {
   let passedMessages = [];
   
-  // 自定义 Mock：为了拦截并断言 System Prompt 中是否成功拼装了 Memory
   const client = {
     chat: {
       completions: {

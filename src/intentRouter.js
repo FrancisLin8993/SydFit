@@ -1,6 +1,5 @@
 import { withHeadroom } from 'headroom-ai/openai';
 import OpenAI from "openai";
-import { compress } from 'headroom-ai';
 import { observeOpenAI } from "@langfuse/openai";
 import { writeLog } from './logger.js';
 

@@ -27,7 +27,7 @@ const mockGetWeather = mock.fn(async () => ({}));
 mock.module("../src/weatherAgent.js", { namedExports: { getWeather: mockGetWeather } });
 
 const mockGenerateClothing = mock.fn(async () => "Wear a jacket");
-mock.module("../src/openai.js", { namedExports: { generateClothingRecommendation: mockGenerateClothing } });
+mock.module("../src/openaiClient.js", { namedExports: { generateClothingRecommendation: mockGenerateClothing } });
 
 const mockSendBark = mock.fn(async () => {});
 mock.module("../src/bark.js", { namedExports: { sendBarkNotification: mockSendBark } });
@@ -46,13 +46,13 @@ describe("Index API Routes", () => {
     mockEnqueueSydFitTask.mock.resetCalls();
   });
 
-  it("should reject unauthorized requests to /ask", async () => {
-    const req = new Request("http://localhost/ask", { method: "POST" });
+  it("should reject unauthorized requests to /api/ask", async () => {
+    const req = new Request("http://localhost/api/ask", { method: "POST" });
     const res = await app.request(req);
     assert.strictEqual(res.status, 401);
   });
 
-  it("should accept authorized requests to /ask and enqueue a task", async () => {
+  it("should accept authorized requests to /api/ask and enqueue a task", async () => {
     const req = new Request("http://localhost/api/ask", {
       method: "POST",
       headers: { 

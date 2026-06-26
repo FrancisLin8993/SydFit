@@ -1,5 +1,4 @@
-import { withHeadroom } from 'headroom-ai/openai';
-import OpenAI from "openai";
+import { openaiClient } from './openaiClient.js';
 import { observeOpenAI } from "@langfuse/openai";
 import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { getRelevantMemories } from "./memoryService.js";
@@ -82,8 +81,7 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
   }
 
   // 2. Process with OpenAI and inject transit memories to filter and generate recommendations
-  const client = observeOpenAI(
-    new OpenAI({ apiKey: config.openaiApiKey }),
+  const client = observeOpenAI(openaiClient,
     { generationName: "traffic-advice", userId: "francis" }
   );
 
@@ -103,7 +101,7 @@ Code of Conduct:
 2. If there are relevant active alerts, clearly list the affected routes or severity, and provide reasonable travel advice.
 3. Response must be highly concise with no fluff, perfect for mobile Bark or Apple Shortcuts.`;
 
-  const response = await client.chat.completions.create({
+  const response = await openaiClient.chat.completions.create({
     model: config.openaiModel,
     messages: [
       { role: "system", content: systemContent },
