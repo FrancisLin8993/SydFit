@@ -107,7 +107,7 @@ Code of Conduct:
     ]
   });
 
-  writeLog("INFO", "[Traffic Agent] Token usage: ", response.usage.total_tokens);
+  writeLog("INFO", `[Traffic Agent] Token usage: ${response.usage.total_tokens}`);
 
 
   const adviceResult = response.choices[0].message.content;
