@@ -4,6 +4,11 @@ on:
     branches:
       - main
 
+env:
+  REGION:  australia-southeast1
+  SERVICE: sydfit-api
+  IMAGE:   australia-southeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/sydfit-api-artifacts/sydfit-api
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -11,18 +16,47 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Dependencies
+        run: npm install
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
-          credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker australia-southeast1-docker.pkg.dev --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ env.IMAGE }}:${{ github.sha }} \
+            --tag ${{ env.IMAGE }}:latest \
+            .
+
+      - name: Push to Artifact Registry
+        run: |
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v3
         with:
-          service: sydfit-api
-          region: australia-southeast1
-          source: .
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE }}:${{ github.sha }}
           flags: >-
+            --platform managed
+            --memory 1Gi
+            --cpu 1
             --allow-unauthenticated
             --min-instances=0
             --max-instances=1
