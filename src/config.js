@@ -25,7 +25,11 @@ export function loadConfigFromEnv(env) {
     mem0ApiUrl: trimTrailingSlash(env.MEM0_API_URL || ""),
     mcpServerUrl: env.MCP_SERVER_URL,
     mcpAccessToken: env.MCP_ACCESS_TOKEN,
-    mem0AccessToken: env.MEM0_ACCESS_TOKEN
+    mem0AccessToken: env.MEM0_ACCESS_TOKEN,
+    gcpProjectId: env.GCP_PROJECT_ID,
+    gcpLocation: env.GCP_LOCATION,
+    gcpQueueName: env.GCP_QUEUE_NAME,
+    sydFitServiceUrl: env.SYDFIT_SERVICE_URL
   };
 }
 

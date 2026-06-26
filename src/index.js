@@ -82,17 +82,33 @@ app.get('/doc', (c) => {
 
 app.get('/swagger', swaggerUI({ url: '/doc' }));
 
+app.post('/ask', async (c) => {
+  try {
+    const { query } = await c.req.json();
+    writeLog("INFO", `Ask API] 📥 Received client request: "${query}"`);
 
-app.post('/api/ask', async (c) => {
+    writeLog("INFO", "Received /ask request, enqueuing background task", { query });
+    
+    await enqueueSydFitTask(config, '/api/process-ask', { query });
+
+    return c.json({ success: true, message: "Task enqueued for background processing" }, 202);
+  } catch (error) {
+    writeLog("ERROR", "/ask Endpoint Failed to enqueue", { error: error.message, stack: error.stack });
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+
+app.post('/api/process-task', async (c) => {
   try {
     const { query } = await c.req.json();
     writeLog("INFO", `Ask API] 📥 Received client request: "${query}"`);
 
     // 3.1 Core intent routing (memory / traffic / weather)
     writeLog("INFO", "[Ask API] 🧠 Retrieving transport preferences from memory bank...");
-    const transportMemory = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
+    const userMemories = await getRelevantMemories(config, "preferred public transport mode commuting sydney");
 
-    const routingResult = await determineIntentAndMode(config, query, transportMemory);
+    const routingResult = await determineIntentAndMode(config, query, userMemories);
     writeLog("INFO", `[Ask API] 🔀 [LLM Router] Decision: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || 'N/A'}]`);
 
     // 3.2 Memory storage intent — user wants SydFit to remember a preference
@@ -133,7 +149,8 @@ app.post('/api/ask', async (c) => {
         "metro": { title: "🚇 Sydney Traffic Alert", sub: "Metro Network Status" },
         "bus": { title: "🚌 Sydney Traffic Alert", sub: "Bus Network Status" },
         "ferry": { title: "⛴️ Sydney Traffic Alert", sub: "Ferry Network Status" },
-        "train": { title: "🚆 Sydney Traffic Alert", sub: "Train Network Status" }
+        "train": { title: "🚆 Sydney Traffic Alert", sub: "Train Network Status" },
+        "all": { title: "Sydney Traffic Alert", sub: "Transport Network Status" }
       };
 
       pushTitle = pushUI[targetMode]?.title || pushUI["train"].title;

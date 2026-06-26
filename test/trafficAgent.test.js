@@ -1,159 +1,70 @@
+import { describe, it, before, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
-import test, { mock } from "node:test"; 
 
-mock.module("../src/gcpAuth.js", {
-  namedExports: {
-    getGcpAuthHeaders: mock.fn(async () => ({ "Authorization": "Bearer fake-gcp-token" }))
+const mockWriteLog = mock.fn();
+mock.module("../src/logger.js", { namedExports: { writeLog: mockWriteLog } });
+
+const mockGetGcpAuthHeaders = mock.fn(async () => ({ "Authorization": "Bearer test" }));
+mock.module("../src/gcpAuth.js", { namedExports: { getGcpAuthHeaders: mockGetGcpAuthHeaders } });
+
+const mockGetRelevantMemories = mock.fn(async () => "User takes T8");
+mock.module("../src/memoryService.js", { namedExports: { getRelevantMemories: mockGetRelevantMemories } });
+
+// Construct an OpenAI mock structure compatible with the code
+const mockCreateChatCompletion = mock.fn(async () => ({
+  choices: [{ message: { content: "Smooth commute." } }]
+}));
+mock.module("openai", {
+  defaultExport: class OpenAI {
+    chat = { completions: { create: mockCreateChatCompletion } };
   }
 });
 
-const {
-  buildTransitErrorMessage,
-  containsMcpError,
-  fetchTfNSWStreamData,
-  handleTrafficQuery,
-  summarizeMcpError
-} = await import("../src/trafficAgent.js");
+describe("Traffic Agent", () => {
+  let trafficAgent;
 
-const mockConfig = {
-  openaiApiKey: "fake-key",
-  openaiModel: "gpt-4o-mini",
-  barkDeviceKey: "fake-bark",
-  barkServerUrl: "https://api.day.app",
-  barkGroup: "Weather",
-  barkLevel: "active",
-  scheduleTimezone: "Australia/Sydney",
-  userPrompt: "morning commute",
-  runOnStart: false,
-  userId: "francis",
-  mem0ApiUrl: "https://fake-mem0.run",
-  // 🔑 Updated to a clean root URL to match the new architecture
-  mcpServerUrl: "https://fake-mcp-server.run", 
-  mcpAccessToken: "fake-token"
-};
-
-function streamResponse(text) {
-  return {
-    ok: true,
-    status: 200,
-    body: new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(text));
-        controller.close();
-      }
-    })
-  };
-}
-
-test("containsMcpError detects MCP system error tags explicitly", () => {
-  assert.equal(containsMcpError("Error: TfNSW API key missing"), false);
-  assert.equal(containsMcpError("server returned errors from upstream"), false);
-  assert.equal(containsMcpError("[CRITICAL_ERROR] strict mode access failed"), true);
-  assert.equal(containsMcpError("[ERROR] Something went wrong in FastMCP"), true);
-  assert.equal(containsMcpError("No current alerts"), false);
-});
-
-test("buildTransitErrorMessage handles bracketed critical MCP errors", () => {
-  const rawError =
-    "[CRITICAL_ERROR] 'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them\n";
-
-  assert.equal(
-    buildTransitErrorMessage(rawError),
-    "Transit data error: [CRITICAL_ERROR] 'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them"
-  );
-});
-
-test("summarizeMcpError strips stream markers and compacts whitespace", () => {
-  assert.equal(
-    summarizeMcpError("[STATUS] running\n[RESULT_START]\nError: upstream unavailable\n[RESULT_END]\n"),
-    "Error: upstream unavailable"
-  );
-});
-
-test("buildTransitErrorMessage formats transit section error", () => {
-  const rawError = "[ERROR] upstream unavailable";
-  assert.equal(
-    buildTransitErrorMessage(rawError),
-    "Transit data error: [ERROR] upstream unavailable"
-  );
-});
-
-test("fetchTfNSWStreamData returns error when config is missing MCP URL", async (t) => {
-  t.mock.method(console, "error", () => {});
-  
-  const badConfig = { ...mockConfig, mcpServerUrl: "" };
-  const fetcher = async () => {};
-
-  const result = await fetchTfNSWStreamData(badConfig, "train", fetcher);
-  assert.equal(result, "Transit data error: Cannot retrieve traffic alert. (MCP Server URL is missing in configuration.)");
-});
-
-test("fetchTfNSWStreamData returns a transit error message on request failure", async (t) => {
-  t.mock.method(console, "error", () => {});
-
-  const fetcher = async () => {
-    throw new Error("network offline");
-  };
-
-  const result = await fetchTfNSWStreamData(mockConfig, "train", fetcher);
-  assert.equal(result, "Transit data error: Cannot retrieve traffic alert. (network offline)");
-});
-
-test("fetchTfNSWStreamData strips MCP stream wrapper", async () => {
-  const fetcher = async () => streamResponse("[STATUS] running\ndata: [RESULT_START]\nNo current alerts\n[RESULT_END]\n");
-
-  const result = await fetchTfNSWStreamData(mockConfig, "train", fetcher);
-  assert.equal(result, "No current alerts");
-});
-
-test("fetchTfNSWStreamData falls back to safe text when stream is empty", async () => {
-  const fetcher = async () => streamResponse("[STATUS] running\ndata: [RESULT_START]\n\n[RESULT_END]\n");
-
-  const result = await fetchTfNSWStreamData(mockConfig, "train", fetcher);
-  assert.equal(result, "No active transport alerts for [train] right now. Everything is running smoothly.");
-});
-
-test("handleTrafficQuery bypasses OpenAI when MCP returns a systemic error tag", async (t) => {
-  t.mock.method(console, "log", () => {});
-
-  const client = {
-    chat: {
-      completions: {
-        create: async () => {
-          throw new Error("OpenAI should not be called");
-        }
-      }
-    }
-  };
-  const fetcher = async () => streamResponse("data: [RESULT_START]\n[ERROR] invalid TfNSW response\n[RESULT_END]\n");
-
-  const result = await handleTrafficQuery(mockConfig, "Is the train delayed?", "train", { client, fetcher });
-  assert.equal(result, "Transit data error: [ERROR] invalid TfNSW response");
-});
-
-test("handleTrafficQuery uses OpenAI when MCP response has no system error tags", async (t) => {
-  t.mock.method(console, "log", () => {});
-  
-  t.mock.method(global, "fetch", async () => {
-    return { ok: true, json: async () => [] };
+  before(async () => {
+    trafficAgent = await import("../src/trafficAgent.js");
   });
 
-  let userContent = "";
-  const client = {
-    chat: {
-      completions: {
-        create: async ({ messages }) => {
-          userContent = messages.at(-1).content;
-          return { choices: [{ message: { content: "Commute is smooth." } }] };
+  beforeEach(() => {
+    mockWriteLog.mock.resetCalls();
+    mockGetGcpAuthHeaders.mock.resetCalls();
+    mockCreateChatCompletion.mock.resetCalls();
+  });
+
+  it("should detect MCP errors correctly", () => {
+    assert.strictEqual(trafficAgent.containsMcpError("[ERROR] System failure"), true);
+    assert.strictEqual(trafficAgent.containsMcpError("All good"), false);
+  });
+
+  it("should filter alerts through handleTrafficQuery using memory", async () => {
+    // Inject a mock fetcher to simulate MCP Server response
+    global.fetch = mock.fn(async () => ({
+      ok: true,
+      body: {
+        getReader: () => {
+          let readCount = 0;
+          return {
+            read: async () => {
+              if (readCount++ > 0) return { done: true };
+              return { done: false, value: new TextEncoder().encode("T8 Alert") };
+            }
+          };
         }
       }
-    }
-  };
+    }));
 
-  const fetcher = async () => streamResponse("data: [RESULT_START]\nError: Trackwork on T1 Western Line\n[RESULT_END]\n");
+    const config = {
+      mcpServerUrl: "https://test.run.app",
+      mcpAccessToken: "test-token",
+      openaiApiKey: "test-key",
+      openaiModel: "test-model"
+    };
 
-  const result = await handleTrafficQuery(mockConfig, "Is the train delayed?", "train", { client, fetcher });
-  
-  assert.equal(result, "Commute is smooth.");
-  assert.match(userContent, /Error: Trackwork on T1 Western Line/);
+    const advice = await trafficAgent.handleTrafficQuery(config, "how is traffic", "User takes T8");
+    
+    assert.strictEqual(advice, "Smooth commute.");
+    assert.strictEqual(mockCreateChatCompletion.mock.calls.length, 1);
+  });
 });

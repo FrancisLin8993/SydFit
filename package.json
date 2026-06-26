@@ -1,5 +1,8 @@
 {
-  "name": "SydFit",
+  "name": "Sydfit",
+  "version": "1.0.0",
+  "description": "Serverless Sydney personal assistant",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
@@ -7,10 +10,11 @@
     "test": "node --experimental-test-module-mocks --test"
   },
   "dependencies": {
-    "@hono/node-server": "^2.0.5",
+    "@google-cloud/tasks": "^6.2.3",
+    "@hono/node-server": "^2.0.6",
     "@hono/swagger-ui": "^0.6.1",
-    "google-auth-library": "^10.7.0",
-    "hono": "^4.12.26",
-    "openai": "^6.42.0"
+    "google-auth-library": "^10.9.0",
+    "hono": "^4.12.27",
+    "openai": "^6.45.0"
   }
 }

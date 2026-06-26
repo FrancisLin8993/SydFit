@@ -10,7 +10,11 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     BARK_SERVER_URL: "https://example.com///",
     SYDFIT_API_KEY: "test-sydfit-key",
     MCP_ACCESS_TOKEN: "test-mcp-access-key",
-    MEM0_ACCESS_TOKEN: "test-mem0-access-key"
+    MEM0_ACCESS_TOKEN: "test-mem0-access-key",
+    GCP_PROJECT_ID: "test-project-id",
+    GCP_LOCATION: "australia-east",
+    GCP_QUEUE_NAME: "sydfit-queue",
+    SYDFIT_SERVICE_URL: "https://test.com"
   });
 
   assert.deepEqual(config, {
@@ -25,7 +29,11 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
     mem0ApiUrl: "",
     mem0AccessToken: "test-mem0-access-key",
     mcpServerUrl: undefined,
-    mcpAccessToken: "test-mcp-access-key"
+    mcpAccessToken: "test-mcp-access-key",
+    gcpProjectId: "test-project-id",
+    gcpLocation: "australia-east",
+    gcpQueueName: "sydfit-queue",
+    sydFitServiceUrl: "https://test.com"
   });
 });
 
