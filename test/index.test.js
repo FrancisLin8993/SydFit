@@ -70,12 +70,12 @@ describe("Index API Routes", () => {
     assert.strictEqual(mockEnqueueSydFitTask.mock.calls.length, 1);
     
     const args = mockEnqueueSydFitTask.mock.calls[0].arguments;
-    assert.strictEqual(args[1], "/task/process-ask");
+    assert.strictEqual(args[1], "/task/process-task");
     assert.deepEqual(args[2], { prompt: "gym today" });
   });
 
-  it("should process the background task successfully on /task/process-ask", async () => {
-    const req = new Request("http://localhost/task/process-ask", {
+  it("should process the background task successfully on /task/process-task", async () => {
+    const req = new Request("http://localhost/task/process-task", {
       method: "POST",
       headers: { 
         "x-sydfit-token": "test-secret",

@@ -179,7 +179,7 @@ app.post('/api/process-task', async (c) => {
     return c.json({ success: true, message: "Bark push triggered successfully." });
 
   } catch (error) {
-    writeLog("ERROR", `❌ /api/process-ask Error:`, error);
+    writeLog("ERROR", `❌ /api/process-task Error:`, error);
     
     // Send Bark notification even on exceptions
     await sendBarkNotification(config, {
