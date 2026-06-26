@@ -82,7 +82,7 @@ app.get('/doc', (c) => {
 
 app.get('/swagger', swaggerUI({ url: '/doc' }));
 
-app.post('/ask', async (c) => {
+app.post('/api/ask', async (c) => {
   try {
     const { query } = await c.req.json();
     writeLog("INFO", `Ask API] 📥 Received client request: "${query}"`);
