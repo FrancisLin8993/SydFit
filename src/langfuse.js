@@ -5,7 +5,10 @@ import {
 	startObservation,
 	propagateAttributes,
 } from "@langfuse/tracing";
+import { LangfuseClient } from "@langfuse/client";
 import { writeLog } from "./logger.js";
+
+export const promptClient = new LangfuseClient();
 
 const isLangfuseEnabled =
 	!!process.env.LANGFUSE_PUBLIC_KEY && !!process.env.LANGFUSE_SECRET_KEY;

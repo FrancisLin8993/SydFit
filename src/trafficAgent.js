@@ -2,6 +2,7 @@ import { openaiClient } from "./openaiClient.js";
 import { observeOpenAI } from "@langfuse/openai";
 import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { getRelevantMemories } from "./memoryService.js";
+import { promptClient } from "./langfuse.js";
 import { writeLog } from "./logger.js";
 
 /**
@@ -102,21 +103,7 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 		userId: "francis",
 	});
 
-	const systemContent = `You are an expert Sydney transit assistant. Your task is to analyze real-time TfNSW alerts and provide a highly personalized, brief, and actionable commute report.
-Today's date and context are Sydney, Australia.
-
-${userTransitMemories ? `The user has some personal travel habits/preferences, historical preferences, or constraints. You MUST strictly align your advice with these memories:\n"${userTransitMemories}"` : ""}
-
-CRITICAL FILTER RULE:
-1. You must cross-reference the incoming real-time TfNSW alerts with the user's transit memories.
-2. ONLY report on or discuss alerts that directly affect the transit lines, routes, stations, or transit modes (e.g., T8 Airport Line, Mascot Station, City Circle, specific train lines) that the user commutes on according to their transit memories.
-3. If an alert is completely unrelated to their routes, lines, stations, or modes (for example, a bus alert when the user only takes the T8 train, or a light rail alert on a completely different line), you MUST silently ignore it.
-4. If there are active alerts in Sydney but NONE of them are relevant to the user's commute preferences, do NOT mention them. Instead, state that their commute is smooth.
-
-Code of Conduct:
-1. If the data indicates everything is normal, or if there are no active alerts relevant to the user's transit memories, tell the user today's commute is smooth (e.g., "Today's commute is smooth. No active alerts affect your route.").
-2. If there are relevant active alerts, clearly list the affected routes or severity, and provide reasonable travel advice.
-3. Response must be highly concise with no fluff, perfect for mobile Bark or Apple Shortcuts.`;
+	const systemContent = await promptClient.prompt.get("traffic-advice");
 
 	const response = await openaiClient.chat.completions.create({
 		model: config.openaiModel,

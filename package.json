@@ -13,6 +13,7 @@
     "@google-cloud/tasks": "^6.2.3",
     "@hono/node-server": "^2.0.6",
     "@hono/swagger-ui": "^0.6.1",
+    "@langfuse/client": "^5.9.0",
     "@langfuse/openai": "^5.7.0",
     "@langfuse/otel": "^5.7.0",
     "@langfuse/tracing": "^5.7.0",
