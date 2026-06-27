@@ -67,23 +67,28 @@ describe("Traffic Agent", () => {
 	});
 
 	it("should filter alerts through handleTrafficQuery using memory", async () => {
-		// Inject a mock fetcher to simulate MCP Server response
+		// Inject a mock fetcher to simulate MCP Server JSON response
+		const mockAlertsData = {
+			mode: "all",
+			alertCount: 1,
+			alerts: [
+				{
+					title: "T8 Line Delay",
+					description: "Delays on T8 line due to trackwork",
+					activePeriods: [
+						{ start: "9:00 AM", end: "5:00 PM" },
+					],
+					cause: "Trackwork",
+					effect: "Delays",
+					url: null,
+				},
+			],
+		};
+
 		global.fetch = mock.fn(async () => ({
 			ok: true,
-			body: {
-				getReader: () => {
-					let readCount = 0;
-					return {
-						read: async () => {
-							if (readCount++ > 0) return { done: true };
-							return {
-								done: false,
-								value: new TextEncoder().encode("T8 Alert"),
-							};
-						},
-					};
-				},
-			},
+			status: 200,
+			json: async () => mockAlertsData,
 		}));
 
 		const config = {

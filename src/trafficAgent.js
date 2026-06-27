@@ -6,9 +6,9 @@ import { promptClient } from "./langfuse.js";
 import { writeLog } from "./logger.js";
 
 /**
- * Fetches raw alerts stream from the TfNSW MCP server
+ * Fetches structured alerts JSON from the TfNSW MCP server
  */
-export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
+export async function fetchTfNswData(config, mode, fetcher = fetch) {
 	try {
 		const mcpServerUrl = config.mcpServerUrl;
 		if (!mcpServerUrl) {
@@ -21,9 +21,9 @@ export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
 		}
 
 		const gcpAuthHeaders = await getGcpAuthHeaders(mcpServerUrl);
-		const fetchUrl = `${mcpServerUrl}/stream`;
+		const fetchUrl = `${mcpServerUrl}/alerts`;
 
-		writeLog("INFO", "Fetching TfNSW stream alerts via MCP server", {
+		writeLog("INFO", "Fetching TfNSW alerts via MCP server", {
 			url: fetchUrl,
 			mode,
 		});
@@ -47,24 +47,49 @@ export async function fetchTfNSWStreamData(config, mode, fetcher = fetch) {
 		if (!response.ok)
 			throw new Error(`HTTP Error. Status code: ${response.status}`);
 
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder();
-		let accumulatedText = "";
+		const data = await response.json();
 
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			accumulatedText += decoder.decode(value, { stream: true });
-		}
-
-		writeLog("INFO", "TfNSW stream alerts fetched successfully", {
-			responseLength: accumulatedText.length,
+		writeLog("INFO", "TfNSW alerts fetched successfully", {
+			alertCount: data.alertCount,
 		});
-		return accumulatedText;
+		return data;
 	} catch (error) {
 		writeLog("ERROR", "Failed to fetch TfNSW alerts", { error: error.message });
 		throw error;
 	}
+}
+
+/**
+ * Formats structured alert JSON into a human-readable prompt string
+ */
+export function formatAlertsForPrompt(data) {
+	if (!data || data.error) {
+		return JSON.stringify(data || { error: "No data returned from MCP server" });
+	}
+
+	const { mode, alertCount, alerts } = data;
+
+	if (!alerts || alertCount === 0) {
+		return `No current alerts for ${mode} transport.`;
+	}
+
+	let result = `Current alerts for ${mode} transport:\n\n`;
+	for (const alert of alerts) {
+		result += `Title: ${alert.title}\n`;
+		result += `Description: ${alert.description}\n`;
+		if (alert.activePeriods && alert.activePeriods.length > 0) {
+			result += "Active Periods:\n";
+			for (const period of alert.activePeriods) {
+				result += `  - ${period.start} to ${period.end}\n`;
+			}
+		}
+		if (alert.cause) result += `Cause: ${alert.cause}\n`;
+		if (alert.effect) result += `Effect: ${alert.effect}\n`;
+		if (alert.url) result += `More info: ${alert.url}\n`;
+		result += "\n";
+	}
+
+	return result;
 }
 
 /**
@@ -85,19 +110,17 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 		hasMemories: !!userTransitMemories,
 	});
 
-	// 1. Fetch raw alerts for 'all' to ensure no relevant alert is missed during filtering
-	const rawAlerts = await fetchTfNSWStreamData(config, "all");
+	const rawAlerts = await fetchTfNswData(config, "all");
 
 	if (containsMcpError(rawAlerts)) {
 		writeLog(
 			"ERROR",
-			"MCP Stream response contains system or connection errors",
+			"MCP response contains system or connection errors",
 			{ rawAlerts },
 		);
-		return rawAlerts;
+		return JSON.stringify(rawAlerts);
 	}
 
-	// 2. Process with OpenAI and inject transit memories to filter and generate recommendations
 	const client = observeOpenAI(openaiClient, {
 		generationName: "traffic-advice",
 		userId: "francis",
@@ -105,21 +128,23 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 
 	const systemContent = await promptClient.prompt.get("traffic-advice");
 
+	const formattedAlerts = formatAlertsForPrompt(rawAlerts);
+
 	const response = await client.chat.completions.create({
 		model: config.openaiModel,
 		messages: [
 			{ role: "system", content: systemContent },
 			{
 				role: "user",
-				content: `User prompt: "${query}"\n\nReal time alert from TfNSW MCP server:\n${rawAlerts}`,
+				content: `User prompt: "${query}"\n\nReal time alert from TfNSW MCP server:\n${formattedAlerts}`,
 			},
 		],
 	});
 
-  const adviceResult = response.choices[0].message.content;
-  writeLog(
+	const adviceResult = response.choices[0].message.content;
+	writeLog(
 		"INFO",
-		`[Traffic Agent] Response from model: ${adviceResult}`
+		`[Traffic Agent] Response from model: ${adviceResult}`,
 	);
 
 	writeLog(
@@ -140,6 +165,9 @@ export function buildTransitErrorMessage(rawAlerts) {
 }
 
 export function containsMcpError(rawAlerts) {
+	if (rawAlerts && typeof rawAlerts === "object") {
+		return !!rawAlerts.error;
+	}
 	const s = String(rawAlerts || "");
 	return (
 		/\[ERROR\]|\[CRITICAL_ERROR\]/i.test(s) ||
@@ -149,6 +177,9 @@ export function containsMcpError(rawAlerts) {
 }
 
 export function summarizeMcpError(rawAlerts) {
+	if (rawAlerts && typeof rawAlerts === "object") {
+		return rawAlerts.error || JSON.stringify(rawAlerts);
+	}
 	return String(rawAlerts || "")
 		.replace(/\[STATUS\].*?(\r?\n|$)/g, "")
 		.trim();
