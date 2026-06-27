@@ -10,7 +10,12 @@ mock.module("../src/googleCloudTask.js", {
 	namedExports: { enqueueSydFitTask: mockEnqueueSydFitTask },
 });
 
-const mockLoadConfig = mock.fn(() => ({ sydFitApiKey: "test-secret" }));
+const mockLoadConfig = mock.fn(() => ({
+	sydFitApiKey: "test-secret",
+	openaiApiKey: "fake-key",
+	openaiModel: "gpt-4o-mini",
+	barkDeviceKey: "fake-device-key",
+}));
 mock.module("../src/config.js", {
 	namedExports: { loadConfig: mockLoadConfig },
 });
@@ -33,13 +38,12 @@ mock.module("../src/intentRouter.js", {
 });
 
 const mockGetWeather = mock.fn(async () => ({}));
-mock.module("../src/weatherAgent.js", {
-	namedExports: { getWeather: mockGetWeather },
-});
-
 const mockGenerateClothing = mock.fn(async () => "Wear a jacket");
 mock.module("../src/weatherAgent.js", {
-	namedExports: { generateClothingRecommendation: mockGenerateClothing },
+	namedExports: {
+		getWeather: mockGetWeather,
+		generateClothingRecommendation: mockGenerateClothing,
+	},
 });
 
 const mockSendBark = mock.fn(async () => {});

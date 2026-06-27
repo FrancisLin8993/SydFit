@@ -51,7 +51,7 @@ export async function generateClothingRecommendation(
 	}
 }
 
-function buildRecommendationInput(weather, userPrompt = "") {
+export function buildRecommendationInput(weather, userPrompt = "") {
 	const parts = [
 		`Create today's clothing recommendation from this weather JSON:\n${JSON.stringify(weather, null, 2)}`,
 	];
@@ -175,4 +175,18 @@ export function normalizeWeather(data, resolvedLocationName) {
 
 export function first(value) {
 	return Array.isArray(value) ? value[0] : value;
+}
+
+export function extractOutputText(response) {
+	if (response.output_text !== undefined) {
+		return response.output_text;
+	}
+	if (Array.isArray(response.output)) {
+		return response.output
+			.flatMap((o) => o.content || [])
+			.filter((c) => c.type === "output_text")
+			.map((c) => c.text)
+			.join("\n");
+	}
+	return "";
 }

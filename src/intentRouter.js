@@ -18,13 +18,16 @@ export async function determineIntentAndMode(
 		});
 
 	const systemPrompt = await promptClient.prompt.get("intent-router");
+	const memoryContext = userMemory
+		? `\n\nUser Transit Preference: ${userMemory}`
+		: "";
 
 	try {
 		const response = await client.chat.completions.create({
 			model: config.openaiModel || "gpt-4o-mini",
 			response_format: { type: "json_object" },
 			messages: [
-				{ role: "system", content: systemPrompt },
+				{ role: "system", content: systemPrompt + memoryContext },
 				{ role: "user", content: `User Prompt: "${userPrompt}"` },
 			],
 			temperature: 0.1,

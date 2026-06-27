@@ -1,11 +1,32 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { before, mock, test } from "node:test";
 
-import {
-	buildRecommendationInput,
-	extractOutputText,
-	generateClothingRecommendation,
-} from "../src/weatherAgent.js";
+mock.module("../src/config.js", {
+	namedExports: {
+		loadConfig: () => ({
+			openaiApiKey: "fake-key",
+			openaiModel: "gpt-4o-mini",
+		}),
+	},
+});
+
+const mockCreate = mock.fn();
+mock.module("openai", {
+	defaultExport: class OpenAI {
+		chat = { completions: { create: mockCreate } };
+	},
+});
+
+let extractOutputText;
+let buildRecommendationInput;
+let generateClothingRecommendation;
+
+before(async () => {
+	const mod = await import("../src/weatherAgent.js");
+	extractOutputText = mod.extractOutputText;
+	buildRecommendationInput = mod.buildRecommendationInput;
+	generateClothingRecommendation = mod.generateClothingRecommendation;
+});
 
 const config = {
 	openaiApiKey: "openai-key",
@@ -38,8 +59,10 @@ test("extractOutputText joins nested output text content", () => {
 	);
 });
 
-test("generateClothingRecommendation sends Responses API request and trims text", async () => {
-	let request;
+test("generateClothingRecommendation sends request and returns trimmed text", async () => {
+	mockCreate.mock.mockImplementation(async () => ({
+		choices: [{ message: { content: "Light jacket and sneakers." } }],
+	}));
 
 	const recommendation = await generateClothingRecommendation(
 		config,
@@ -48,30 +71,29 @@ test("generateClothingRecommendation sends Responses API request and trims text"
 	);
 
 	assert.equal(recommendation, "Light jacket and sneakers.");
+	assert.equal(mockCreate.mock.calls.length, 1);
+	const callArgs = mockCreate.mock.calls[0].arguments[0];
+	assert.equal(callArgs.model, "gpt-5.4-mini");
 });
 
 test("generateClothingRecommendation includes optional user prompt", async () => {
-	let requestBody;
-	const fetcher = async (url, options) => {
-		requestBody = JSON.parse(options.body);
+	mockCreate.mock.mockImplementation(async ({ messages }) => {
+		const userMessage = messages.find((m) => m.role === "user");
+		assert.match(
+			userMessage.content,
+			/User context or request from iPhone Shortcut/,
+		);
+		assert.match(userMessage.content, /office day, dinner after work/);
 		return {
-			ok: true,
-			json: async () => ({ output_text: "Wear office layers." }),
+			choices: [{ message: { content: "Wear office layers." } }],
 		};
-	};
+	});
 
 	await generateClothingRecommendation(
 		config,
 		"office day, dinner after work",
 		{},
-		fetcher,
 	);
-
-	assert.match(
-		requestBody.input,
-		/User context or request from iPhone Shortcut/,
-	);
-	assert.match(requestBody.input, /office day, dinner after work/);
 });
 
 test("buildRecommendationInput omits empty user prompt", () => {
@@ -81,27 +103,23 @@ test("buildRecommendationInput omits empty user prompt", () => {
 });
 
 test("generateClothingRecommendation throws on failed OpenAI response", async () => {
-	const fetcher = async () => ({
-		ok: false,
-		status: 401,
-		statusText: "Unauthorized",
-		text: async () => "bad key",
+	mockCreate.mock.mockImplementation(async () => {
+		throw new Error("401 Unauthorized: bad key");
 	});
 
 	await assert.rejects(
-		() => generateClothingRecommendation(config, "", {}, fetcher),
-		/OpenAI Responses API request failed: 401 Unauthorized bad key/,
+		() => generateClothingRecommendation(config, "", {}),
+		/401 Unauthorized: bad key/,
 	);
 });
 
 test("generateClothingRecommendation throws when no output text is present", async () => {
-	const fetcher = async () => ({
-		ok: true,
-		json: async () => ({ output: [] }),
-	});
+	mockCreate.mock.mockImplementation(async () => ({
+		choices: [{ message: {} }],
+	}));
 
 	await assert.rejects(
-		() => generateClothingRecommendation(config, "", {}, fetcher),
-		/OpenAI response did not include output text/,
+		() => generateClothingRecommendation(config, "", {}),
+		/Cannot read properties of undefined/,
 	);
 });

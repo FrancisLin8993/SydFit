@@ -1,6 +1,22 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-import { determineIntentAndMode } from "../src/intentRouter.js";
+import { before, mock, test } from "node:test";
+
+mock.module("../src/langfuse.js", {
+	namedExports: {
+		promptClient: {
+			prompt: {
+				get: async () =>
+					`You are an intent router. Determine the intent of the user's message. 
+Valid intents: "weather", "traffic", "memory".
+For traffic, set "mode" to one of: "train", "bus", "ferry", "lightrail", "metro".
+For memory, extract a "preference" string to store.
+Return JSON: {"intent": "...", "mode": null|"...", "preference": null|"..."}`,
+			},
+		},
+	},
+});
+
+let determineIntentAndMode;
 
 const mockConfig = {
 	openaiApiKey: "fake-key",
@@ -18,6 +34,11 @@ function createMockClient(mockedResponseContent) {
 		},
 	};
 }
+
+before(async () => {
+	const mod = await import("../src/intentRouter.js");
+	determineIntentAndMode = mod.determineIntentAndMode;
+});
 
 test("determineIntentAndMode detects explicit traffic mode from prompt", async () => {
 	const client = createMockClient(

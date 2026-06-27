@@ -1,7 +1,22 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { before, mock, test } from "node:test";
 
-import { first, getWeather, normalizeWeather } from "../src/weatherAgent.js";
+mock.module("../src/config.js", {
+	namedExports: {
+		loadConfig: () => ({
+			openaiApiKey: "fake-key",
+			openaiModel: "gpt-4o-mini",
+		}),
+	},
+});
+
+mock.module("../src/memoryService.js", {
+	namedExports: {
+		getRelevantMemories: async () => "",
+	},
+});
+
+let first, getWeather, normalizeWeather;
 
 const openMeteoPayload = {
 	current: {
@@ -28,6 +43,13 @@ const openMeteoPayload = {
 const mockConfig = {
 	scheduleTimezone: "Australia/Sydney",
 };
+
+before(async () => {
+	const mod = await import("../src/weatherAgent.js");
+	first = mod.first;
+	getWeather = mod.getWeather;
+	normalizeWeather = mod.normalizeWeather;
+});
 
 test("normalizeWeather maps Open-Meteo fields to app weather shape", () => {
 	// 注入第二个参数 "Mascot, NSW"

@@ -4,6 +4,25 @@ import assert from "node:assert/strict";
 const mockWriteLog = mock.fn();
 mock.module("../src/logger.js", { namedExports: { writeLog: mockWriteLog } });
 
+mock.module("../src/config.js", {
+	namedExports: {
+		loadConfig: () => ({
+			openaiApiKey: "test-key",
+			openaiModel: "test-model",
+		}),
+	},
+});
+
+mock.module("../src/langfuse.js", {
+	namedExports: {
+		promptClient: {
+			prompt: {
+				get: async () => "You are a traffic advisor. Filter alerts based on user memory.",
+			},
+		},
+	},
+});
+
 const mockGetGcpAuthHeaders = mock.fn(async () => ({
 	Authorization: "Bearer test",
 }));
