@@ -105,7 +105,7 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 
 	const systemContent = await promptClient.prompt.get("traffic-advice");
 
-	const response = await openaiClient.chat.completions.create({
+	const response = await client.chat.completions.create({
 		model: config.openaiModel,
 		messages: [
 			{ role: "system", content: systemContent },
