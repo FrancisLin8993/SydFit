@@ -27,7 +27,7 @@ const mockGetWeather = mock.fn(async () => ({}));
 mock.module("../src/weatherAgent.js", { namedExports: { getWeather: mockGetWeather } });
 
 const mockGenerateClothing = mock.fn(async () => "Wear a jacket");
-mock.module("../src/openaiClient.js", { namedExports: { generateClothingRecommendation: mockGenerateClothing } });
+mock.module("../src/weatherAgent.js", { namedExports: { generateClothingRecommendation: mockGenerateClothing } });
 
 const mockSendBark = mock.fn(async () => {});
 mock.module("../src/bark.js", { namedExports: { sendBarkNotification: mockSendBark } });

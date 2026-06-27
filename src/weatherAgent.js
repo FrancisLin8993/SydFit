@@ -29,7 +29,7 @@ export async function generateClothingRecommendation(config, query, weather, fet
           content: userInput
         }
       ],
-      max_tokens: 160
+      max_completion_tokens: 160
     });
 
     const text = response.choices[0]?.message?.content;
