@@ -27,12 +27,12 @@ export async function addPreferenceToMemory(config, text) {
 		if (!response.ok) {
 			const errorText = await response.text();
 			throw new Error(
-				`Memory service error: ${response.status} - ${errorText}`,
+				`[Memory service] Memory service error: ${response.status} - ${errorText}`,
 			);
 		}
 		return true;
 	} catch (error) {
-		writeLog("ERROR", "Failed to add memory", { error: error.message });
+		writeLog("ERROR", "[Memory service] Failed to add memory", { error: error.message });
 		return false;
 	}
 }
@@ -68,9 +68,10 @@ export async function getRelevantMemories(config, query) {
 		}
 
 		const responseData = await response.json();
+		writeLog("INFO", "[Memory service] Memories get from mem0", responseData);
 		return responseData.memories || [];
 	} catch (error) {
-		writeLog("ERROR", "Failed to retrieve memories", { error: error.message });
+		writeLog("ERROR", "[Memory service] Failed to retrieve memories", { error: error.message });
 		return [];
 	}
 }

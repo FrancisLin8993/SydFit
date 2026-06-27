@@ -24,7 +24,7 @@ export async function determineIntentAndMode(
 
 	try {
 		const response = await client.chat.completions.create({
-			model: config.openaiModel || "gpt-4o-mini",
+			model: "gpt-4o-mini",
 			response_format: { type: "json_object" },
 			messages: [
 				{ role: "system", content: systemPrompt + memoryContext },
