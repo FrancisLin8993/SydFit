@@ -116,12 +116,17 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 		],
 	});
 
+  const adviceResult = response.choices[0].message.content;
+  writeLog(
+		"INFO",
+		`[Traffic Agent] Response from model: ${adviceResult}`
+	);
+
 	writeLog(
 		"INFO",
 		`[Traffic Agent] Token usage: ${response.usage?.total_tokens ?? "N/A"}`,
 	);
 
-	const adviceResult = response.choices[0].message.content;
 	writeLog("INFO", "Successfully generated filtered transit advice", {
 		adviceLength: adviceResult.length,
 	});
