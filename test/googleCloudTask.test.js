@@ -8,61 +8,64 @@ const mockWriteLog = mock.fn();
 
 // Mock the Google Cloud Tasks SDK
 mock.module("@google-cloud/tasks", {
-  namedExports: {
-    CloudTasksClient: class {
-      createTask = mockCreateTask;
-      queuePath = mockQueuePath;
-    }
-  }
+	namedExports: {
+		CloudTasksClient: class {
+			createTask = mockCreateTask;
+			queuePath = mockQueuePath;
+		},
+	},
 });
 
 // Mock the structured logger
 mock.module("../src/logger.js", {
-  namedExports: {
-    writeLog: mockWriteLog
-  }
+	namedExports: {
+		writeLog: mockWriteLog,
+	},
 });
 
 describe("Cloud Tasks Utility", () => {
-  let cloudTasks;
+	let cloudTasks;
 
-  before(async () => {
-    // Dynamically import the module AFTER setting up the native mocks
-    cloudTasks = await import("../src/googleCloudTask.js");
-  });
+	before(async () => {
+		// Dynamically import the module AFTER setting up the native mocks
+		cloudTasks = await import("../src/googleCloudTask.js");
+	});
 
-  beforeEach(() => {
-    // Reset call counts and histories before each test
-    mockCreateTask.mock.resetCalls();
-    mockQueuePath.mock.resetCalls();
-    mockWriteLog.mock.resetCalls();
-  });
+	beforeEach(() => {
+		// Reset call counts and histories before each test
+		mockCreateTask.mock.resetCalls();
+		mockQueuePath.mock.resetCalls();
+		mockWriteLog.mock.resetCalls();
+	});
 
-  it("should successfully enqueue a task", async () => {
-    const config = {
-      gcpProjectId: "test-project",
-      gcpLocation: "test-location",
-      gcpQueueName: "test-queue",
-      sydFitServiceUrl: "https://test.run.app",
-      sydFitApiKey: "test-api-key"
-    };
-    
-    const response = await cloudTasks.enqueueSydFitTask(config, "/test-endpoint", { prompt: "test" });
-    assert.strictEqual(response.name, "test-task-name");
+	it("should successfully enqueue a task", async () => {
+		const config = {
+			gcpProjectId: "test-project",
+			gcpLocation: "test-location",
+			gcpQueueName: "test-queue",
+			sydFitServiceUrl: "https://test.run.app",
+			sydFitApiKey: "test-api-key",
+		};
 
-    
-    const [level, message, meta] = mockWriteLog.mock.calls[0].arguments;
-    assert.strictEqual(level, "INFO");
-    assert.strictEqual(message, "Cloud Task enqueued successfully");
-    assert.ok(typeof meta === "object");
-  });
+		const response = await cloudTasks.enqueueSydFitTask(
+			config,
+			"/test-endpoint",
+			{ prompt: "test" },
+		);
+		assert.strictEqual(response.name, "test-task-name");
 
-  it("should throw an error if cloud task config is incomplete", async () => {
-    const config = { gcpProjectId: "test-project" };
-    
-    await assert.rejects(
-      () => cloudTasks.enqueueSydFitTask(config, "/test", {}),
-      /Cloud Tasks configuration is incomplete/
-    );
-  });
+		const [level, message, meta] = mockWriteLog.mock.calls[0].arguments;
+		assert.strictEqual(level, "INFO");
+		assert.strictEqual(message, "Cloud Task enqueued successfully");
+		assert.ok(typeof meta === "object");
+	});
+
+	it("should throw an error if cloud task config is incomplete", async () => {
+		const config = { gcpProjectId: "test-project" };
+
+		await assert.rejects(
+			() => cloudTasks.enqueueSydFitTask(config, "/test", {}),
+			/Cloud Tasks configuration is incomplete/,
+		);
+	});
 });

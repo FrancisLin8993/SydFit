@@ -1,18 +1,25 @@
-import { withHeadroom } from 'headroom-ai/openai';
+import { withHeadroom } from "headroom-ai/openai";
 import OpenAI from "openai";
 import { observeOpenAI } from "@langfuse/openai";
-import { writeLog } from './logger.js';
+import { writeLog } from "./logger.js";
 
-export async function determineIntentAndMode(config, userPrompt, transportMemory, options = {}) {
-  const client = options.client || observeOpenAI(
-    withHeadroom(new OpenAI({ apiKey: config.openaiApiKey })),
-    { generationName: "intent-router", userId: "francis" }
-  );
+export async function determineIntentAndMode(
+	config,
+	userPrompt,
+	transportMemory,
+	options = {},
+) {
+	const client =
+		options.client ||
+		observeOpenAI(withHeadroom(new OpenAI({ apiKey: config.openaiApiKey })), {
+			generationName: "intent-router",
+			userId: "francis",
+		});
 
-  const systemPrompt = `You are the core routing brain for SydFit, a Sydney-based personal assistant.
+	const systemPrompt = `You are the core routing brain for SydFit, a Sydney-based personal assistant.
 Your task is to analyze the user's current prompt and their historical transit preferences to route the request.
 
-User's historical transit memory from Qdrant: "${transportMemory || 'None'}"
+User's historical transit memory from Qdrant: "${transportMemory || "None"}"
 
 You must determine the user's intent and route accordingly. Choose exactly ONE intent:
 
@@ -32,23 +39,30 @@ You must also determine:
 Constraint: You MUST respond in pure JSON format matching this schema:
 { "intent": "traffic" | "weather" | "memory", "mode": "train" | "metro" | "lightrail" | "bus" | "ferry" | null, "preference": "string | null" }`;
 
-  try {
-    const response = await client.chat.completions.create({
-      model: config.openaiModel || "gpt-4o-mini",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `User Prompt: "${userPrompt}"` }
-      ],
-      temperature: 0.1
-    });
+	try {
+		const response = await client.chat.completions.create({
+			model: config.openaiModel || "gpt-4o-mini",
+			response_format: { type: "json_object" },
+			messages: [
+				{ role: "system", content: systemPrompt },
+				{ role: "user", content: `User Prompt: "${userPrompt}"` },
+			],
+			temperature: 0.1,
+		});
 
-    writeLog("INFO", `[Intent Router] Token usage: ${response.usage?.total_tokens ?? "N/A"}`);
+		writeLog(
+			"INFO",
+			`[Intent Router] Token usage: ${response.usage?.total_tokens ?? "N/A"}`,
+		);
 
-    const result = JSON.parse(response.choices[0].message.content);
-    return result;
-  } catch (error) {
-    writeLog("ERROR", "❌ LLM Router failed, falling back to safe default:", error);
-    return { intent: "traffic", mode: "train", preference: null };
-  }
+		const result = JSON.parse(response.choices[0].message.content);
+		return result;
+	} catch (error) {
+		writeLog(
+			"ERROR",
+			"❌ LLM Router failed, falling back to safe default:",
+			error,
+		);
+		return { intent: "traffic", mode: "train", preference: null };
+	}
 }
