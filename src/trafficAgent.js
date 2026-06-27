@@ -12,18 +12,18 @@ export async function fetchTfNswData(config, mode, fetcher = fetch) {
 	try {
 		const mcpServerUrl = config.mcpServerUrl;
 		if (!mcpServerUrl) {
-			throw new Error("MCP Server URL is missing in configuration.");
+			throw new Error("[Traffic Agent] MCP Server URL is missing in configuration.");
 		}
 
 		const mcpAccessToken = config.mcpAccessToken;
 		if (!mcpAccessToken) {
-			throw new Error("MCP Access Token is missing in configuration.");
+			throw new Error("[Traffic Agent] MCP Access Token is missing in configuration.");
 		}
 
 		const gcpAuthHeaders = await getGcpAuthHeaders(mcpServerUrl);
 		const fetchUrl = `${mcpServerUrl}/alerts`;
 
-		writeLog("INFO", "Fetching TfNSW alerts via MCP server", {
+		writeLog("INFO", "[Traffic Agent] Fetching TfNSW alerts via MCP server", {
 			url: fetchUrl,
 			mode,
 		});
@@ -42,19 +42,19 @@ export async function fetchTfNswData(config, mode, fetcher = fetch) {
 		});
 
 		if (response.status === 401) {
-			throw new Error("MCP server rejected request: invalid or missing token.");
+			throw new Error("[Traffic Agent] MCP server rejected request: invalid or missing token.");
 		}
 		if (!response.ok)
-			throw new Error(`HTTP Error. Status code: ${response.status}`);
+			throw new Error(`[Traffic Agent] HTTP Error. Status code: ${response.status}`);
 
 		const data = await response.json();
 
-		writeLog("INFO", "TfNSW alerts fetched successfully", {
+		writeLog("INFO", "[Traffic Agent] TfNSW alerts fetched successfully", {
 			alertCount: data.alertCount,
 		});
 		return data;
 	} catch (error) {
-		writeLog("ERROR", "Failed to fetch TfNSW alerts", { error: error.message });
+		writeLog("ERROR", "[Traffic Agent] Failed to fetch TfNSW alerts", { error: error.message });
 		throw error;
 	}
 }
@@ -64,7 +64,7 @@ export async function fetchTfNswData(config, mode, fetcher = fetch) {
  */
 export function formatAlertsForPrompt(data) {
 	if (!data || data.error) {
-		return JSON.stringify(data || { error: "No data returned from MCP server" });
+		return JSON.stringify(data || { error: "[Traffic Agent] No data returned from MCP server" });
 	}
 
 	const { mode, alertCount, alerts } = data;
@@ -105,7 +105,7 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 		return "TfNSW MCP Server is not configured. Real-time alerts are unavailable.";
 	}
 
-	writeLog("INFO", "Analyzing traffic alerts with user travel preferences", {
+	writeLog("INFO", "[Traffic Agent] Analyzing traffic alerts with user travel preferences", {
 		query,
 		hasMemories: !!userTransitMemories,
 	});
@@ -152,7 +152,7 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 		`[Traffic Agent] Token usage: ${response.usage?.total_tokens ?? "N/A"}`,
 	);
 
-	writeLog("INFO", "Successfully generated filtered transit advice", {
+	writeLog("INFO", "[Traffic Agent] Successfully generated filtered transit advice", {
 		adviceLength: adviceResult.length,
 	});
 
@@ -161,7 +161,7 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 
 export function buildTransitErrorMessage(rawAlerts) {
 	if (!containsMcpError(rawAlerts)) return "";
-	return `Transit data error: ${summarizeMcpError(rawAlerts)}`;
+	return `[Traffic Agent] Transit data error: ${summarizeMcpError(rawAlerts)}`;
 }
 
 export function containsMcpError(rawAlerts) {
