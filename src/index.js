@@ -234,12 +234,12 @@ app.post("/api/process-task", async (c) => {
 							},
 						};
 
-						pushTitle = pushUI[targetMode]?.title || pushUI["train"].title;
-						pushSubtitle = pushUI[targetMode]?.sub || pushUI["train"].sub;
+						pushTitle = modes.length > 1 ? "🚆 Sydney Traffic Update" : (pushUI[modes[0]]?.title || "Sydney Traffic Alert");
+    					pushSubtitle = modes.length > 1 ? "Multiple Network Status" : (pushUI[modes[0]]?.sub || "Status Update");
 
 						writeLog(
 							"INFO",
-							`[Process Task API] 🚂 [Traffic Agent] Retrieving TfNSW network: ${targetMode}`,
+							`[Process Task API] 🚂 [Traffic Agent] Retrieving TfNSW network: ${targetModes}`,
 						);
 						writeLog("DEBUG", "About to call handleTrafficQuery", { targetModes, userMemoriesPreview: userMemories });
 						aiReply = await handleTrafficQuery(config, query, userMemories, targetModes);
