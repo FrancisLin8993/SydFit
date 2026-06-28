@@ -160,7 +160,7 @@ app.post("/api/process-task", async (c) => {
 					);
 					writeLog(
 						"INFO",
-						`[Process Task API] 🔀 [LLM Router] Decision: Intent=[${routingResult.intent}], Mode=[${routingResult.mode || "N/A"}]`,
+						`[Process Task API] 🔀 [LLM Router] Decision: Intent=[${routingResult.intent}], Mode=${routingResult.modes}`,
 					);
 
 					// 3.2 Memory storage intent — user wants SydFit to remember a preference
