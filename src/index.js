@@ -11,10 +11,7 @@ import { createTrafficAgent } from "./agents/trafficAgent.js";
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
 import { getWeather, generateClothingRecommendation } from "./weatherAgent.js";
-import {
-	handleTrafficQuery,
-	buildTransitErrorMessage,
-} from "./traffic.js";
+import { handleTrafficQuery, buildTransitErrorMessage } from "./traffic.js";
 import { addPreferenceToMemory, getRelevantMemories } from "./memoryService.js";
 import { determineIntentAndMode } from "./intentRouter.js";
 import { writeLog } from "./logger.js";
