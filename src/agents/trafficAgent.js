@@ -1,18 +1,19 @@
 import { Agent } from "@openai/agents";
 import { filterAlertsTool } from "../tools/filterAlertsTool.js";
-import { getUserTransitMemory } from "../tools/memoryTool.js";
-import { getTfnswAlerts } from "../tools/tfnswTool.js";
+import { getUserTransitMemoryTool } from "../tools/memoryTool.js";
+import { getTfnswAlertsTool } from "../tools/tfnswTool.js";
 
-export const createTrafficAgent = (config) => {
+export const trafficAgent = (config) => {
 	return new Agent({
 		name: "sydney-traffic-agent",
-
 		instructions: `
 You are a Sydney public transport assistant.
 
 Your job:
 1. Use tools to get user transit preferences
-2. Use tools to fetch real-time TfNSW alerts
+2. Use tools to fetch real-time TfNSW alerts — call the alerts tool once per
+   relevant mode found in the user's transit memory (e.g. once for "train",
+   once for "lightrail" if both are relevant)
 3. Use filtering tool to remove irrelevant alerts
 4. Only respond with relevant disruptions
 
@@ -23,24 +24,8 @@ Rules:
 `,
 
 		tools: [
-			{
-				...getUserTransitMemory,
-				execute: (args) =>
-					getUserTransitMemory.execute({
-						...args,
-						config,
-					}),
-			},
-
-			{
-				...getTfnswAlerts,
-				execute: (args) =>
-					getTfnswAlerts.execute({
-						...args,
-						config,
-					}),
-			},
-
+			getUserTransitMemoryTool(config),
+			getTfnswAlertsTool(config),
 			filterAlertsTool,
 		],
 	});

@@ -8,7 +8,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { swaggerUI } from "@hono/swagger-ui";
 import { enqueueSydFitTask } from "./googleCloudTask.js";
-import { createTrafficAgent } from "./agents/trafficAgent.js";
+import { trafficAgent } from "./agents/trafficAgent.js";
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
 import { getWeather, generateClothingRecommendation } from "./weatherAgent.js";
@@ -203,7 +203,7 @@ app.post("/api/process-task", async (c) => {
 
 					// 3.3 Execute corresponding Agent
 					if (routingResult.intent === "traffic") {
-						const agent = createTrafficAgent(config);
+						const agent = trafficAgent(config);
 
 						writeLog("INFO", `[Traffic Agent] Running OpenAI Agent SDK...`, {
 							query,
