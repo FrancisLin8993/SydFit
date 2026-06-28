@@ -11,7 +11,7 @@ export const getUserMemoryTool = (config) =>
 			query: z.string().describe("A short description of what kind of transit memory to search for, e.g. 'preferred public transport mode commuting sydney'."),
 		}),
 		execute: async ({ query }) => {
-			writeLog("INFO", "[Tool] Fetch user transit memory", { query });
+			writeLog("INFO", "[Tool] Fetch user memory", { query });
 
 			const memories = await getRelevantMemories(config, query);
 			return memories.map((m) => m.text ?? m.memory ?? m).join("\n");

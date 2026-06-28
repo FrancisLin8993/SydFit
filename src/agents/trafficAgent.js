@@ -26,7 +26,7 @@ Rules:
 		tools: [
 			getUserMemoryTool(config),
 			getTfnswAlertsTool(config),
-			filterAlertsTool,
+			filterAlertsTool(config),
 		],
 	});
 };
