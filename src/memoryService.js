@@ -68,10 +68,18 @@ export async function getRelevantMemories(config, query) {
 		}
 
 		const responseData = await response.json();
-		writeLog("INFO", "[Memory service] Memories get from mem0", responseData);
-		return responseData.memories || [];
+		const memoriesArray = responseData.memories || [];
+    
+    const formattedMemories = memoriesArray
+      .map(m => m.memory) 
+      .filter(Boolean)
+      .join("; ");
+      
+    writeLog("INFO", "Successfully formatted user memories", { formattedMemories: formattedMemories });
+    
+    return formattedMemories;
 	} catch (error) {
 		writeLog("ERROR", "[Memory service] Failed to retrieve memories", { error: error.message });
-		return [];
+		return "";
 	}
 }
