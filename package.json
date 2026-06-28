@@ -5,9 +5,9 @@
 	"main": "src/index.ts",
 	"type": "module",
 	"scripts": {
-		"dev": "node --watch dist/index.ts",
+		"dev": "tsx watch src/index.ts",
 		"build": "tsc",
-		"start": "node dist/index.ts",
+		"start": "node dist/index.js",
 		"build:watch": "tsc -w",
 		"test": "node --experimental-test-module-mocks --test"
 	},
