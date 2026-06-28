@@ -8,8 +8,9 @@
 		"strict": false,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
+		"allowJs": true, // ← new: lets tsc process .js files too
 		"types": ["node"]
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src/**/*.ts", "src/**/*.js"], // ← include .js explicitly
 	"exclude": ["node_modules", "dist"]
 }

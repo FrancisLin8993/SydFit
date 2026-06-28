@@ -3,6 +3,7 @@ import {
 	startActiveObservation,
 	propagateAttributes,
 } from "./langfuse.js";
+import { Runner } from "@openai/agents";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { swaggerUI } from "@hono/swagger-ui";
@@ -207,10 +208,13 @@ app.post("/api/process-task", async (c) => {
 						writeLog("INFO", `[Traffic Agent] Running OpenAI Agent SDK...`, {
 							query,
 						});
-
-						const result = await agent.run({
-							input: query,
-						});
+						const runner = new Runner();
+						const result = await runner.run(
+							agent,
+							JSON.stringify({
+								input: query,
+							}),
+						);
 
 						aiReply = result.finalOutput;
 
