@@ -68,7 +68,7 @@ export async function getRelevantMemories(config, query) {
 		}
 
 		const responseData = await response.json();
-		const memoriesArray = responseData.memories || [];
+		const memoriesArray = responseData.memories.results || [];
     
     const formattedMemories = memoriesArray
       .map(m => m.memory) 
