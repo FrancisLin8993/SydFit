@@ -14,7 +14,7 @@ import { getWeather, generateClothingRecommendation } from "./weatherAgent.js";
 import {
 	handleTrafficQuery,
 	buildTransitErrorMessage,
-} from "./trafficAgent.js";
+} from "./traffic.js";
 import { addPreferenceToMemory, getRelevantMemories } from "./memoryService.js";
 import { determineIntentAndMode } from "./intentRouter.js";
 import { writeLog } from "./logger.js";
