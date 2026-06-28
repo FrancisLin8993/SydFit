@@ -234,8 +234,8 @@ app.post("/api/process-task", async (c) => {
 							},
 						};
 
-						pushTitle = modes.length > 1 ? "🚆 Sydney Traffic Update" : (pushUI[modes[0]]?.title || "Sydney Traffic Alert");
-    					pushSubtitle = modes.length > 1 ? "Multiple Network Status" : (pushUI[modes[0]]?.sub || "Status Update");
+						pushTitle = targetModes.length > 1 ? "🚆 Sydney Traffic Update" : (pushUI[modes[0]]?.title || "Sydney Traffic Alert");
+    					pushSubtitle = targetModes.length > 1 ? "Multiple Network Status" : (pushUI[modes[0]]?.sub || "Status Update");
 
 						writeLog(
 							"INFO",

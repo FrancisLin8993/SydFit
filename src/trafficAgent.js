@@ -112,7 +112,7 @@ export async function handleTrafficQuery(config, query, userTransitMemories, tar
 	});
 
 	const rawAlerts = await Promise.all(
-        modes.map(mode => handleTrafficQuery(config, query, userTransitMemories, mode))
+        targetModes.map(mode => handleTrafficQuery(config, query, userTransitMemories, mode))
     );
 
 	if (containsMcpError(rawAlerts)) {
