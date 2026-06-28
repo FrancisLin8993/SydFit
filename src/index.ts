@@ -2,7 +2,7 @@ import {
 	flushLangfuse,
 	startActiveObservation,
 	propagateAttributes,
-} from "./langfuse";
+} from "./langfuse.js";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { swaggerUI } from "@hono/swagger-ui";
