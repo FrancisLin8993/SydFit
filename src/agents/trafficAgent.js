@@ -1,5 +1,5 @@
 import { Agent } from "@openai/agents";
-import { getUserTransitMemoryTool } from "../tools/filterAlertsTool.js";
+import { filterAlertsTool } from "../tools/filterAlertsTool.js";
 import { getUserTransitMemory } from "../tools/memoryTool.js";
 import { getTfnswAlerts } from "../tools/tfnswTool.js";
 
