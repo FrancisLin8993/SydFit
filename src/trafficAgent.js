@@ -130,12 +130,14 @@ export async function handleTrafficQuery(config, query, userTransitMemories, tar
 	});
 
 	const systemContent = await promptClient.prompt.get("traffic-advice");
-	writeLog("INFO", `system prompt: ${JSON.stringify(systemContent)}`);
+	const compiledPrompt = systemContent.compile({
+  		userTransitMemories: userTransitMemories
+	});
 	const formattedAlerts = formatAlertsForPrompt(rawAlerts);
 	const response = await client.chat.completions.create({
 		model: config.openaiModel,
 		messages: [
-			{ role: "system", content: systemContent },
+			{ role: "system", content: compiledPrompt },
 			{
 				role: "user",
 				content: `User prompt: "${query}"\n\nReal time alert from TfNSW MCP server:\n${formattedAlerts}`,
