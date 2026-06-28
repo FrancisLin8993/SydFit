@@ -7,6 +7,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { swaggerUI } from "@hono/swagger-ui";
 import { enqueueSydFitTask } from "./googleCloudTask.js";
+import { createTrafficAgent } from "./agents/trafficAgent.js";
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
 import { getWeather, generateClothingRecommendation } from "./weatherAgent.js";
@@ -204,45 +205,22 @@ app.post("/api/process-task", async (c) => {
 
 					// 3.3 Execute corresponding Agent
 					if (routingResult.intent === "traffic") {
-						const targetModes = routingResult.modes;
+						const agent = createTrafficAgent(config);
 
-						// Dynamic UI text mapping
-						const pushUI = {
-							lightrail: {
-								title: "🚊 Sydney Traffic Alert",
-								sub: "Light Rail Status",
-							},
-							metro: {
-								title: "🚇 Sydney Traffic Alert",
-								sub: "Metro Network Status",
-							},
-							bus: {
-								title: "🚌 Sydney Traffic Alert",
-								sub: "Bus Network Status",
-							},
-							ferry: {
-								title: "⛴️ Sydney Traffic Alert",
-								sub: "Ferry Network Status",
-							},
-							train: {
-								title: "🚆 Sydney Traffic Alert",
-								sub: "Train Network Status",
-							},
-							all: {
-								title: "Sydney Traffic Alert",
-								sub: "Transport Network Status",
-							},
-						};
+						writeLog("INFO", `[Traffic Agent] Running OpenAI Agent SDK...`, {
+							query,
+						});
 
-						pushTitle = targetModes.length > 1 ? "🚆 Sydney Traffic Update" : (pushUI[modes[0]]?.title || "Sydney Traffic Alert");
-    					pushSubtitle = targetModes.length > 1 ? "Multiple Network Status" : (pushUI[modes[0]]?.sub || "Status Update");
+						const result = await agent.run({
+							input: query,
+						});
 
-						writeLog(
-							"INFO",
-							`[Process Task API] 🚂 [Traffic Agent] Retrieving TfNSW network: ${targetModes}`,
-						);
-						writeLog("DEBUG", "About to call handleTrafficQuery", { targetModes, userMemoriesPreview: userMemories });
-						aiReply = await handleTrafficQuery(config, query, userMemories, targetModes);
+						aiReply = result.finalOutput;
+
+						pushTitle =
+							targetModes.length > 1
+								? "🚆 Sydney Traffic Update"
+								: "🚆 Sydney Traffic Alert";
 					} else {
 						writeLog(
 							"INFO",
@@ -312,7 +290,10 @@ app.post("/api/cron", async (c) => {
 					try {
 						const [weather, trafficReport] = await Promise.all([
 							getWeather(config),
-							handleTrafficQuery(config, "Morning commute status", ["train", "lightrail"]),
+							handleTrafficQuery(config, "Morning commute status", [
+								"train",
+								"lightrail",
+							]),
 						]);
 
 						const trafficError = buildTransitErrorMessage(trafficReport);

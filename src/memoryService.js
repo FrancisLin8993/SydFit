@@ -1,16 +1,21 @@
 import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { writeLog } from "./logger.js";
 
+/**
+ * Add a memory (unchanged logic, but cleaner error handling)
+ */
 export async function addPreferenceToMemory(config, text) {
 	try {
 		const mem0ApiUrl = config.mem0ApiUrl;
 		if (!mem0ApiUrl)
 			throw new Error("MEM0_API_URL is not configured in config");
+
 		const mem0AccessToken = config.mem0AccessToken;
 		if (!mem0AccessToken)
 			throw new Error("MEM0_ACCESS_TOKEN is missing for memory service");
 
 		const gcpAuthHeaders = await getGcpAuthHeaders(mem0ApiUrl);
+
 		const response = await fetch(`${mem0ApiUrl}/memory/add`, {
 			method: "POST",
 			headers: {
@@ -19,7 +24,7 @@ export async function addPreferenceToMemory(config, text) {
 				...gcpAuthHeaders,
 			},
 			body: JSON.stringify({
-				text: text,
+				text,
 				user_id: "francis",
 			}),
 		});
@@ -27,20 +32,36 @@ export async function addPreferenceToMemory(config, text) {
 		if (!response.ok) {
 			const errorText = await response.text();
 			throw new Error(
-				`[Memory service] Memory service error: ${response.status} - ${errorText}`,
+				`[Memory service] Add memory failed: ${response.status} - ${errorText}`,
 			);
 		}
-		return true;
+
+		writeLog("INFO", "[Memory] Successfully added memory", { text });
+
+		return { success: true };
 	} catch (error) {
-		writeLog("ERROR", "[Memory service] Failed to add memory", { error: error.message });
-		return false;
+		writeLog("ERROR", "[Memory service] Failed to add memory", {
+			error: error.message,
+		});
+
+		return { success: false, error: error.message };
 	}
 }
 
+/**
+ * Returns structured memories for LLM / Agent tool usage
+ */
 export async function getRelevantMemories(config, query) {
 	try {
-		if (!config.mem0ApiUrl) return "";
+		if (!config.mem0ApiUrl) {
+			return {
+				memories: [],
+				error: "mem0ApiUrl not configured",
+			};
+		}
+
 		const gcpAuthHeaders = await getGcpAuthHeaders(config.mem0ApiUrl);
+
 		const workerToken = process.env.MEM0_ACCESS_TOKEN;
 		const searchEndpoint = `${config.mem0ApiUrl}/memory/search`;
 
@@ -48,38 +69,59 @@ export async function getRelevantMemories(config, query) {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				"X-Worker-Token": workerToken ? workerToken.trim() : "",
+				"X-Worker-Token": workerToken?.trim() || "",
 				...gcpAuthHeaders,
 			},
 			body: JSON.stringify({
 				context: query,
 				user_id: "francis",
-				limit: 3,
+				limit: 5,
 			}),
 		});
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			writeLog("ERROR", "Memory search error", {
+
+			writeLog("ERROR", "[Memory] Search failed", {
 				status: response.status,
 				error: errorText,
 			});
-			return "";
+
+			return {
+				memories: [],
+				error: errorText,
+			};
 		}
 
 		const responseData = await response.json();
-		const memoriesArray = responseData.memories.results || [];
-    
-    const formattedMemories = memoriesArray
-      .map(m => m.memory) 
-      .filter(Boolean)
-      .join("; ");
-      
-    writeLog("INFO", "Successfully formatted user memories", { formattedMemories: formattedMemories });
-    
-    return formattedMemories;
+
+		const memoriesArray = responseData?.memories?.results || [];
+
+		// 🔥 IMPORTANT: preserve structure
+		const memories = memoriesArray
+			.map((m) => ({
+				text: m.memory,
+				score: m.score ?? null,
+				timestamp: m.created_at ?? null,
+			}))
+			.filter((m) => m.text);
+
+		writeLog("INFO", "[Memory] Retrieved memories", {
+			count: memories.length,
+		});
+
+		return {
+			memories,
+			query,
+		};
 	} catch (error) {
-		writeLog("ERROR", "[Memory service] Failed to retrieve memories", { error: error.message });
-		return "";
+		writeLog("ERROR", "[Memory service] Failed to retrieve memories", {
+			error: error.message,
+		});
+
+		return {
+			memories: [],
+			error: error.message,
+		};
 	}
 }

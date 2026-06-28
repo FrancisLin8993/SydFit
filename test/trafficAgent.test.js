@@ -17,7 +17,8 @@ mock.module("../src/langfuse.js", {
 	namedExports: {
 		promptClient: {
 			prompt: {
-				get: async () => "You are a traffic advisor. Filter alerts based on user memory.",
+				get: async () =>
+					"You are a traffic advisor. Filter alerts based on user memory.",
 			},
 		},
 	},
@@ -75,9 +76,7 @@ describe("Traffic Agent", () => {
 				{
 					title: "T8 Line Delay",
 					description: "Delays on T8 line due to trackwork",
-					activePeriods: [
-						{ start: "9:00 AM", end: "5:00 PM" },
-					],
+					activePeriods: [{ start: "9:00 AM", end: "5:00 PM" }],
 					cause: "Trackwork",
 					effect: "Delays",
 					url: null,
