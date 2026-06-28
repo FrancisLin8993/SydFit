@@ -1,7 +1,7 @@
 import { Agent } from "@openai/agents";
 import { filterAlertsTool } from "../tools/filterAlertsTool.js";
-import { getUserTransitMemory } from "../tools/memoryTool.js";
-import { getTfnswAlerts } from "../tools/tfnswTool.js";
+import { getUserTransitMemoryTool } from "../tools/memoryTool.js";
+import { getTfnswAlertsTool } from "../tools/tfnswTool.js";
 
 export const createTrafficAgent = (config) => {
 	return new Agent({
