@@ -40,12 +40,19 @@ export async function determineIntentAndMode(
 
 		const result = JSON.parse(response.choices[0].message.content);
 		return result;
+
+		// Ensure backwards compatibility or safe array mapping
+		if (result.mode && !result.modes) {
+		result.modes = [result.mode];
+		} else if (!result.modes || result.modes.length === 0) {
+		result.modes = ["train", "lightrail"];
+		}
 	} catch (error) {
 		writeLog(
 			"ERROR",
 			"❌ LLM Router failed, falling back to safe default:",
 			error,
 		);
-		return { intent: "traffic", mode: "train", preference: null };
+		return { intent: "traffic", mode: ["train", "lightrail"], preference: null };
 	}
 }
