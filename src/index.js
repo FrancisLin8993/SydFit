@@ -241,7 +241,8 @@ app.post("/api/process-task", async (c) => {
 							"INFO",
 							`[Process Task API] 🚂 [Traffic Agent] Retrieving TfNSW network: ${targetMode}`,
 						);
-						aiReply = await handleTrafficQuery(config, query, targetMode);
+						writeLog("DEBUG", "About to call handleTrafficQuery", { targetMode, userMemoriesPreview: userMemories?.slice(0, 100) });
+						aiReply = await handleTrafficQuery(config, query, userMemories);
 					} else {
 						writeLog(
 							"INFO",

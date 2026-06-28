@@ -96,6 +96,7 @@ export function formatAlertsForPrompt(data) {
  * Handles the traffic query, pulls real-time alerts, and filters them strictly based on user memory
  */
 export async function handleTrafficQuery(config, query, userTransitMemories) {
+	writeLog("DEBUG", "Inside handleTrafficQuery", { receivedThirdArg: userTransitMemories });
 	const mcpServerUrl = config.mcpServerUrl;
 	if (!mcpServerUrl) {
 		writeLog(
@@ -129,7 +130,6 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 	const systemContent = await promptClient.prompt.get("traffic-advice");
 
 	const formattedAlerts = formatAlertsForPrompt(rawAlerts);
-
 	const response = await client.chat.completions.create({
 		model: config.openaiModel,
 		messages: [
