@@ -5,8 +5,10 @@
 	"main": "src/index.js",
 	"type": "module",
 	"scripts": {
-		"start": "node src/index.js",
-		"dev": "node --watch src/index.js",
+		"dev": "node --watch dist/index.js",
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"build:watch": "tsc -w",
 		"test": "node --experimental-test-module-mocks --test"
 	},
 	"dependencies": {
@@ -26,6 +28,9 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.5.1"
+		"@biomejs/biome": "2.5.1",
+		"@types/node": "^26.0.1",
+		"ts-node": "^10.9.2",
+		"typescript": "^6.0.3"
 	}
 }
