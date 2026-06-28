@@ -95,7 +95,7 @@ export function formatAlertsForPrompt(data) {
 /**
  * Handles the traffic query, pulls real-time alerts, and filters them strictly based on user memory
  */
-export async function handleTrafficQuery(config, query, userTransitMemories) {
+export async function handleTrafficQuery(config, query, userTransitMemories, targetModes) {
 	writeLog("DEBUG", "Inside handleTrafficQuery", { receivedThirdArg: userTransitMemories });
 	const mcpServerUrl = config.mcpServerUrl;
 	if (!mcpServerUrl) {
@@ -111,7 +111,9 @@ export async function handleTrafficQuery(config, query, userTransitMemories) {
 		hasMemories: !!userTransitMemories,
 	});
 
-	const rawAlerts = await fetchTfNswData(config, "all");
+	const rawAlerts = await Promise.all(
+        modes.map(mode => handleTrafficQuery(config, query, userTransitMemories, mode))
+    );
 
 	if (containsMcpError(rawAlerts)) {
 		writeLog(

@@ -204,7 +204,7 @@ app.post("/api/process-task", async (c) => {
 
 					// 3.3 Execute corresponding Agent
 					if (routingResult.intent === "traffic") {
-						const targetMode = routingResult.mode || "train";
+						const targetModes = routingResult.modes;
 
 						// Dynamic UI text mapping
 						const pushUI = {
@@ -241,8 +241,8 @@ app.post("/api/process-task", async (c) => {
 							"INFO",
 							`[Process Task API] 🚂 [Traffic Agent] Retrieving TfNSW network: ${targetMode}`,
 						);
-						writeLog("DEBUG", "About to call handleTrafficQuery", { targetMode, userMemoriesPreview: userMemories });
-						aiReply = await handleTrafficQuery(config, query, userMemories);
+						writeLog("DEBUG", "About to call handleTrafficQuery", { targetModes, userMemoriesPreview: userMemories });
+						aiReply = await handleTrafficQuery(config, query, userMemories, targetModes);
 					} else {
 						writeLog(
 							"INFO",
