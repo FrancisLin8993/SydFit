@@ -130,7 +130,7 @@ export async function handleTrafficQuery(config, query, userTransitMemories, tar
 	});
 
 	const systemContent = await promptClient.prompt.get("traffic-advice");
-
+	writeLog("INFO", `${systemContent}`);
 	const formattedAlerts = formatAlertsForPrompt(rawAlerts);
 	const response = await client.chat.completions.create({
 		model: config.openaiModel,
