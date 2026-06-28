@@ -312,7 +312,7 @@ app.post("/api/cron", async (c) => {
 					try {
 						const [weather, trafficReport] = await Promise.all([
 							getWeather(config),
-							handleTrafficQuery(config, "Morning commute status", "train"),
+							handleTrafficQuery(config, "Morning commute status", ["train", "lightrail"]),
 						]);
 
 						const trafficError = buildTransitErrorMessage(trafficReport);
