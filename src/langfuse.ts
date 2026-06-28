@@ -13,7 +13,7 @@ export const promptClient = new LangfuseClient();
 const isLangfuseEnabled =
 	!!process.env.LANGFUSE_PUBLIC_KEY && !!process.env.LANGFUSE_SECRET_KEY;
 
-let langfuseSpanProcessor = null;
+let langfuseSpanProcessor: LangfuseSpanProcessor | null = null;
 
 if (isLangfuseEnabled) {
 	langfuseSpanProcessor = new LangfuseSpanProcessor({
