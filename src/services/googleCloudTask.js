@@ -1,5 +1,5 @@
 import { CloudTasksClient } from "@google-cloud/tasks";
-import { writeLog } from "./logger.js";
+import { writeLog } from "../utils/logger.js";
 
 let client;
 
