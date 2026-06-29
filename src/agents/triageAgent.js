@@ -39,7 +39,7 @@ For every incoming message, decide one of three things:
       rain?") is NOT a memory request, even if it mentions a preference.
 
 2. TRAFFIC — The user is asking about transit, traffic, commute, delays, or
-   transport network status.
+   transport network status. If user mention just "Alert", it will be a traffic request.
    -> Hand off to the traffic specialist.
 
 3. WEATHER — The user is asking about weather, clothing, outfit, rain,
