@@ -9,10 +9,10 @@ import { Hono } from "hono";
 import { swaggerUI } from "@hono/swagger-ui";
 import { enqueueSydFitTask } from "./googleCloudTask.js";
 import { trafficAgent } from "./agents/trafficAgent.js";
+import { weatherAgent } from "./agents/weatherAgent.js";
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
-import { getWeather, generateClothingRecommendation } from "./weatherAgent.js";
-import { handleTrafficQuery, buildTransitErrorMessage } from "./traffic.js";
+import { buildTransitErrorMessage } from "./traffic.js";
 import { addPreferenceToMemory, getRelevantMemories } from "./memoryService.js";
 import { determineIntentAndMode } from "./intentRouter.js";
 import { writeLog } from "./logger.js";
@@ -201,7 +201,6 @@ app.post("/api/process-task", async (c) => {
 					let pushTitle = "💬 SydFit Assistant";
 					let pushSubtitle = "Real-time Query";
 
-					// 3.3 Execute corresponding Agent
 					if (routingResult.intent === "traffic") {
 						const agent = trafficAgent(config);
 
@@ -217,22 +216,24 @@ app.post("/api/process-task", async (c) => {
 						);
 
 						aiReply = result.finalOutput;
-
 						pushTitle = "🚆 Sydney Traffic Update";
 					} else {
-						writeLog(
-							"INFO",
-							`[Process Task API] ☀️ [Weather Agent] Fetching current weather and outfit advice...`,
-						);
-						const weather = await getWeather(config);
-						aiReply = await generateClothingRecommendation(
-							config,
+						const agent = weatherAgent(config);
+
+						writeLog("INFO", `[Weather Agent] Running OpenAI Agent SDK...`, {
 							query,
-							weather,
+						});
+						const runner = new Runner();
+						const result = await runner.run(
+							agent,
+							JSON.stringify({
+								input: query,
+							}),
 						);
 
-						pushTitle = "☀️ Mascot Outfit Suggestion";
-						pushSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
+						aiReply = result.finalOutput;
+						pushTitle = "☀️ Outfit Suggestion";
+						pushSubtitle = "Today's weather-based recommendation";
 					}
 
 					writeLog(
@@ -286,19 +287,32 @@ app.post("/api/cron", async (c) => {
 					);
 
 					try {
-						const [weather, trafficReport] = await Promise.all([
-							getWeather(config),
-							handleTrafficQuery(config, "Morning commute status", [
-								"train",
-								"lightrail",
-							]),
+						const weatherAgentInstance = weatherAgent(config);
+						const weatherRunner = new Runner();
+						const trafficAgentInstance = trafficAgent(config);
+						const trafficRunner = new Runner();
+
+						const [weatherResult, trafficResult] = await Promise.all([
+							weatherRunner.run(
+								weatherAgentInstance,
+								JSON.stringify({ input: "Morning outfit" }),
+							),
+							trafficRunner.run(
+								trafficAgentInstance,
+								JSON.stringify({ input: "Morning outfit" }),
+							),
 						]);
 
-						const trafficError = buildTransitErrorMessage(trafficReport);
+						const clothingRecommendation = weatherResult.finalOutput;
+						const trafficRecommendation = trafficResult.finalOutput;
+
+						const trafficError = buildTransitErrorMessage(
+							trafficRecommendation,
+						);
 						if (trafficError) {
 							writeLog(
 								"ERROR",
-								`❌ Traffic agent returned an error: ${trafficReport}`,
+								`❌ Traffic agent returned an error: ${trafficRecommendation}`,
 							);
 							await sendBarkNotification(config, {
 								title: "❌ Transit Data Error",
@@ -307,17 +321,10 @@ app.post("/api/cron", async (c) => {
 							});
 						}
 
-						const clothingRecommendation = await generateClothingRecommendation(
-							config,
-							"Morning outfit",
-							weather,
-						);
-						const weatherSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
-
 						const notifications = [
 							sendBarkNotification(config, {
 								title: "☀️ Today's Outfit",
-								subtitle: weatherSubtitle,
+								subtitle: "Morning weather-based recommendation",
 								body: clothingRecommendation,
 							}),
 						];
@@ -327,7 +334,7 @@ app.post("/api/cron", async (c) => {
 								sendBarkNotification(config, {
 									title: "🚆 Transport Alerts",
 									subtitle: "Morning Commute",
-									body: trafficReport,
+									body: trafficRecommendation,
 								}),
 							);
 						}
@@ -338,7 +345,7 @@ app.post("/api/cron", async (c) => {
 						span.update({
 							output: {
 								clothing: clothingRecommendation,
-								traffic: trafficReport,
+								traffic: trafficRecommendation,
 							},
 						});
 						return c.json({

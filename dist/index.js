@@ -4,11 +4,11 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { swaggerUI } from "@hono/swagger-ui";
 import { enqueueSydFitTask } from "./googleCloudTask.js";
-import { createTrafficAgent } from "./agents/trafficAgent.js";
+import { trafficAgent } from "./agents/trafficAgent.js";
+import { weatherAgent } from "./agents/weatherAgent.js";
 import { sendBarkNotification } from "./bark.js";
 import { loadConfig } from "./config.js";
-import { getWeather, generateClothingRecommendation } from "./weatherAgent.js";
-import { handleTrafficQuery, buildTransitErrorMessage } from "./traffic.js";
+import { buildTransitErrorMessage } from "./traffic.js";
 import { addPreferenceToMemory, getRelevantMemories } from "./memoryService.js";
 import { determineIntentAndMode } from "./intentRouter.js";
 import { writeLog } from "./logger.js";
@@ -148,9 +148,8 @@ app.post("/api/process-task", async (c) => {
                 let aiReply = "";
                 let pushTitle = "💬 SydFit Assistant";
                 let pushSubtitle = "Real-time Query";
-                // 3.3 Execute corresponding Agent
                 if (routingResult.intent === "traffic") {
-                    const agent = createTrafficAgent(config);
+                    const agent = trafficAgent(config);
                     writeLog("INFO", `[Traffic Agent] Running OpenAI Agent SDK...`, {
                         query,
                     });
@@ -162,11 +161,17 @@ app.post("/api/process-task", async (c) => {
                     pushTitle = "🚆 Sydney Traffic Update";
                 }
                 else {
-                    writeLog("INFO", `[Process Task API] ☀️ [Weather Agent] Fetching current weather and outfit advice...`);
-                    const weather = await getWeather(config);
-                    aiReply = await generateClothingRecommendation(config, query, weather);
-                    pushTitle = "☀️ Mascot Outfit Suggestion";
-                    pushSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
+                    const agent = weatherAgent(config);
+                    writeLog("INFO", `[Weather Agent] Running OpenAI Agent SDK...`, {
+                        query,
+                    });
+                    const runner = new Runner();
+                    const result = await runner.run(agent, JSON.stringify({
+                        input: query,
+                    }));
+                    aiReply = result.finalOutput;
+                    pushTitle = "☀️ Outfit Suggestion";
+                    pushSubtitle = "Today's weather-based recommendation";
                 }
                 writeLog("INFO", `[Process Task API] ✅ Processing complete, triggering Bark push notification...`);
                 await sendBarkNotification(config, {
@@ -204,28 +209,29 @@ app.post("/api/cron", async (c) => {
         return propagateAttributes({ userId: "francis", tags: ["cron"] }, async () => {
             writeLog("INFO", `⏰ [Cron] Triggering daily morning briefing task...`);
             try {
-                const [weather, trafficReport] = await Promise.all([
-                    getWeather(config),
-                    handleTrafficQuery(config, "Morning commute status", [
-                        "train",
-                        "lightrail",
-                    ]),
+                const weatherAgentInstance = weatherAgent(config);
+                const weatherRunner = new Runner();
+                const trafficAgentInstance = trafficAgent(config);
+                const trafficRunner = new Runner();
+                const [weatherResult, trafficResult] = await Promise.all([
+                    weatherRunner.run(weatherAgentInstance, JSON.stringify({ input: "Morning outfit" })),
+                    trafficRunner.run(trafficAgentInstance, JSON.stringify({ input: "Morning outfit" })),
                 ]);
-                const trafficError = buildTransitErrorMessage(trafficReport);
+                const clothingRecommendation = weatherResult.finalOutput;
+                const trafficRecommendation = trafficResult.finalOutput;
+                const trafficError = buildTransitErrorMessage(trafficRecommendation);
                 if (trafficError) {
-                    writeLog("ERROR", `❌ Traffic agent returned an error: ${trafficReport}`);
+                    writeLog("ERROR", `❌ Traffic agent returned an error: ${trafficRecommendation}`);
                     await sendBarkNotification(config, {
                         title: "❌ Transit Data Error",
                         subtitle: "MCP Server / TfNSW API",
                         body: trafficError,
                     });
                 }
-                const clothingRecommendation = await generateClothingRecommendation(config, "Morning outfit", weather);
-                const weatherSubtitle = `${weather.condition}, ${weather.temperatureC}°C (Feels like ${weather.apparentTemperatureC}°C)`;
                 const notifications = [
                     sendBarkNotification(config, {
                         title: "☀️ Today's Outfit",
-                        subtitle: weatherSubtitle,
+                        subtitle: "Morning weather-based recommendation",
                         body: clothingRecommendation,
                     }),
                 ];
@@ -233,7 +239,7 @@ app.post("/api/cron", async (c) => {
                     notifications.push(sendBarkNotification(config, {
                         title: "🚆 Transport Alerts",
                         subtitle: "Morning Commute",
-                        body: trafficReport,
+                        body: trafficRecommendation,
                     }));
                 }
                 await Promise.all(notifications);
@@ -241,7 +247,7 @@ app.post("/api/cron", async (c) => {
                 span.update({
                     output: {
                         clothing: clothingRecommendation,
-                        traffic: trafficReport,
+                        traffic: trafficRecommendation,
                     },
                 });
                 return c.json({

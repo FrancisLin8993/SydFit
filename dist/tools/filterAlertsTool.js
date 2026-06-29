@@ -1,6 +1,22 @@
-export const filterAlertsTool = {
+import { z } from "zod";
+import { tool } from "@openai/agents";
+export const filterAlertsTool = tool({
     name: "filter_relevant_alerts",
-    description: "Filter TfNSW alerts based on user transit preferences",
+    description: "Filters a set of TfNSW alerts down to only those relevant to the user's preferred transit lines, based on their transit memories.",
+    parameters: z.object({
+        memories: z
+            .string()
+            .describe("The user's transit memory text, used to determine which lines/modes they care about."),
+        alertsByMode: z
+            .array(z.object({
+            mode: z.string(),
+            alerts: z.array(z.object({
+                title: z.string(),
+                description: z.string(),
+            }).passthrough()),
+        }))
+            .describe("Raw alert blocks grouped by transport mode, as returned by the TfNSW alerts tool."),
+    }),
     execute: async ({ memories, alertsByMode }) => {
         const preferredLines = extractLines(memories);
         const filtered = [];
@@ -18,7 +34,7 @@ export const filterAlertsTool = {
             matched_preferences: preferredLines,
         };
     },
-};
+});
 /**
  * naive but effective extraction
  */
