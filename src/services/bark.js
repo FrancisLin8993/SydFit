@@ -1,4 +1,4 @@
-import { writeLog } from "./logger.js";
+import { writeLog } from "../utils/logger.js";
 
 // 1. Add fetcher parameter for dependency injection in tests
 export async function sendBarkNotification(

@@ -1,6 +1,6 @@
 import { withHeadroom } from "headroom-ai/openai";
 import OpenAI from "openai";
-import { loadConfig } from "./config.js";
+import { loadConfig } from "../utils/config.js";
 
 const config = loadConfig();
 

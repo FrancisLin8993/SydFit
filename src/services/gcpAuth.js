@@ -1,5 +1,5 @@
 import { GoogleAuth } from "google-auth-library";
-import { writeLog } from "./logger.js";
+import { writeLog } from "../utils/logger.js";
 
 const auth = new GoogleAuth();
 
