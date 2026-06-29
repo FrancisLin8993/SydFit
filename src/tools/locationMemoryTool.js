@@ -11,14 +11,19 @@ export const getUserLocationMemoryTool = (config) =>
 		parameters: z.object({
 			query: z
 				.string()
-				.describe("A short description of what kind of location memory to search for, e.g. 'preferred location, suburb, or city for weather forecast'."),
+				.describe(
+					"A short description of what kind of location memory to search for, e.g. 'preferred location, suburb, or city for weather forecast'.",
+				),
 		}),
 		execute: async ({ query }) => {
 			const { memories } = await getRelevantMemories(config, query);
 
 			const locationText = memories?.[0]?.text || "";
 
-			writeLog("INFO", `🧠 [Memory] Retrieved weather location query: "${locationText || "None"}"`);
+			writeLog(
+				"INFO",
+				`🧠 [Memory] Retrieved weather location query: "${locationText || "None"}"`,
+			);
 			return locationText;
 		},
 	});

@@ -228,50 +228,77 @@ app.post("/api/cron", async (c) => {
 					);
 
 					try {
-						// Cron bypasses triage entirely — it's a fixed daily job,
-						// not a user message that needs routing. Calls the
-						// weather agent and traffic query directly, same as before.
 						const weatherAgentInstance = weatherAgent(config);
-						const weatherRunner = new Runner();
-
 						const trafficAgentInstance = trafficAgent(config);
-						const trafficRunner = new Runner();
 
-						const [weatherResult, trafficReport] = await Promise.all([
-							weatherRunner.run(
+						// Run both agents concurrently but settle independently —
+						// Promise.allSettled lets a traffic failure still send the
+						// outfit notification, and vice versa, rather than one
+						// failure cancelling both via Promise.all rejection.
+						const [weatherSettled, trafficSettled] = await Promise.allSettled([
+							new Runner().run(
 								weatherAgentInstance,
 								JSON.stringify({ input: "Morning outfit" }),
 							),
-							trafficRunner.run(
+							new Runner().run(
 								trafficAgentInstance,
 								JSON.stringify({ input: "Get public transport alerts" }),
 							),
 						]);
 
-						const clothingRecommendation = weatherResult.finalOutput;
+						const notifications: Promise<any>[] = [];
 
-						const notifications = [
-							sendBarkNotification(config, {
-								title: "☀️ Today's Outfit",
-								subtitle: "Morning weather-based recommendation",
-								body: clothingRecommendation,
-							}),
-							sendBarkNotification(config, {
+						if (weatherSettled.status === "fulfilled") {
+							// FIX 1: extract .finalOutput from the RunResult object
+							const clothingRecommendation = weatherSettled.value.finalOutput;
+							notifications.push(
+								sendBarkNotification(config, {
+									title: "☀️ Today's Outfit",
+									subtitle: "Morning weather-based recommendation",
+									body: clothingRecommendation,
+								}),
+							);
+							span.update({ output: { clothing: clothingRecommendation } });
+						} else {
+							writeLog("ERROR", "❌ Weather agent failed", {
+								error: weatherSettled.reason?.message,
+							});
+							notifications.push(
+								sendBarkNotification(config, {
+									title: "❌ Weather Agent Error",
+									subtitle: "Morning Briefing",
+									body: weatherSettled.reason?.message || "Unknown error",
+								}),
+							);
+						}
+
+						if (trafficSettled.status === "fulfilled") {
+							// FIX 1: same — extract .finalOutput, not the RunResult object itself
+							const trafficReport = trafficSettled.value.finalOutput;
+							notifications.push(
+								sendBarkNotification(config, {
 									title: "🚆 Transport Alerts",
 									subtitle: "Morning Commute",
 									body: trafficReport,
 								}),
-						];
+							);
+							span.update({ output: { traffic: trafficReport } });
+						} else {
+							writeLog("ERROR", "❌ Traffic agent failed", {
+								error: trafficSettled.reason?.message,
+							});
+							notifications.push(
+								sendBarkNotification(config, {
+									title: "❌ Transit Data Error",
+									subtitle: "MCP Server / TfNSW API",
+									body: trafficSettled.reason?.message || "Unknown error",
+								}),
+							);
+						}
 
 						await Promise.all(notifications);
-						writeLog(`✅ [Cron] Morning briefing pushed successfully.`);
+						writeLog("INFO", `✅ [Cron] Morning briefing pushed successfully.`);
 
-						span.update({
-							output: {
-								clothing: clothingRecommendation,
-								traffic: trafficReport,
-							},
-						});
 						return c.json({
 							success: true,
 							message: "Morning briefing sent via Bark.",
@@ -293,7 +320,6 @@ app.post("/api/cron", async (c) => {
 	await flushLangfuse();
 	return result;
 });
-
 export { app };
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -19,18 +19,30 @@ export const saveUserPreferenceTool = (config) =>
 			const trimmed = (preference || "").trim();
 
 			if (!trimmed) {
-				writeLog("WARNING", "[Tool] save_preference called with empty preference");
-				return { success: false, message: "No preference text was provided to save." };
+				writeLog(
+					"WARNING",
+					"[Tool] save_preference called with empty preference",
+				);
+				return {
+					success: false,
+					message: "No preference text was provided to save.",
+				};
 			}
 
-			writeLog("INFO", "[Tool] Saving preference to memory", { preference: trimmed });
+			writeLog("INFO", "[Tool] Saving preference to memory", {
+				preference: trimmed,
+			});
 
 			const isSaved = await addPreferenceToMemory(config, trimmed);
 
 			if (!isSaved) {
-				writeLog("ERROR", "[Tool] Failed to save preference — mem0 sync failed", {
-					preference: trimmed,
-				});
+				writeLog(
+					"ERROR",
+					"[Tool] Failed to save preference — mem0 sync failed",
+					{
+						preference: trimmed,
+					},
+				);
 				return {
 					success: false,
 					message: "Memory cluster sync failed. Please check Mem0 status.",

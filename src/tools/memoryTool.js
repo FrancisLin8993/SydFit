@@ -11,7 +11,9 @@ export const getUserMemoryTool = (config) =>
 		parameters: z.object({
 			query: z
 				.string()
-				.describe("A short description of what kind of transit memory to search for, e.g. 'preferred public transport mode commuting sydney'."),
+				.describe(
+					"A short description of what kind of transit memory to search for, e.g. 'preferred public transport mode commuting sydney'.",
+				),
 		}),
 		execute: async ({ query }) => {
 			writeLog("INFO", "[Tool] Fetch user memory", { query });
@@ -19,7 +21,9 @@ export const getUserMemoryTool = (config) =>
 			const { memories, error } = await getRelevantMemories(config, query);
 
 			if (error) {
-				writeLog("WARNING", "[Tool] Memory retrieval returned an error", { error });
+				writeLog("WARNING", "[Tool] Memory retrieval returned an error", {
+					error,
+				});
 			}
 
 			if (!memories || memories.length === 0) {
