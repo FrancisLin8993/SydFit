@@ -8,8 +8,9 @@ import { triageAgent } from "./agents/triageAgent.js";
 import { weatherAgent } from "./agents/weatherAgent.js";
 import { sendBarkNotification } from "./services/bark.js";
 import { loadConfig } from "./utils/config.js";
-import { handleTrafficQuery, buildTransitErrorMessage } from "./services/traffic.js";
+import { buildTransitErrorMessage } from "./services/traffic.js";
 import { writeLog } from "./utils/logger.js";
+import { trafficAgent } from "./agents/trafficAgent.js";
 const app = new Hono();
 const config = loadConfig();
 app.use("*", async (c, next) => {
@@ -186,12 +187,11 @@ app.post("/api/cron", async (c) => {
                 // weather agent and traffic query directly, same as before.
                 const weatherAgentInstance = weatherAgent(config);
                 const weatherRunner = new Runner();
+                const trafficAgentInstance = trafficAgent(config);
+                const trafficRunner = new Runner();
                 const [weatherResult, trafficReport] = await Promise.all([
                     weatherRunner.run(weatherAgentInstance, JSON.stringify({ input: "Morning outfit" })),
-                    handleTrafficQuery(config, "Morning commute status", [
-                        "train",
-                        "lightrail",
-                    ]),
+                    trafficRunner.run(trafficAgentInstance, JSON.stringify({ input: "Get public transport alerts" })),
                 ]);
                 const clothingRecommendation = weatherResult.finalOutput;
                 const trafficError = buildTransitErrorMessage(trafficReport);
