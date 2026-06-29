@@ -19,6 +19,7 @@ export const getUserMemoryTool = (config) =>
 			writeLog("INFO", "[Tool] Fetch user memory", { query });
 
 			const memories = await getRelevantMemories(config, query);
+			writeLog("INFO", "[Tool] Fetch result", { memories });
 			return memories.map((m) => m.text ?? m.memory ?? m).join("\n");
 		},
 	});
