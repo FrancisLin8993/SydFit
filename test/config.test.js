@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadConfigFromEnv } from "../src/config.js";
+import { loadConfigFromEnv } from "../src/utils/config.js";
 
 test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
 	const config = loadConfigFromEnv({

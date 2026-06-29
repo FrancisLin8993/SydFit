@@ -8,20 +8,26 @@ export const filterAlertsTool = tool({
 	parameters: z.object({
 		memories: z
 			.string()
-			.describe("The user's transit memory text, used to determine which lines/modes they care about."),
+			.describe(
+				"The user's transit memory text, used to determine which lines/modes they care about.",
+			),
 		alertsByMode: z
 			.array(
 				z.object({
 					mode: z.string(),
 					alerts: z.array(
-						z.object({
-							title: z.string(),
-							description: z.string(),
-						}).passthrough(),
+						z
+							.object({
+								title: z.string(),
+								description: z.string(),
+							})
+							.passthrough(),
 					),
 				}),
 			)
-			.describe("Raw alert blocks grouped by transport mode, as returned by the TfNSW alerts tool."),
+			.describe(
+				"Raw alert blocks grouped by transport mode, as returned by the TfNSW alerts tool.",
+			),
 	}),
 	execute: async ({ memories, alertsByMode }) => {
 		const preferredLines = extractLines(memories);

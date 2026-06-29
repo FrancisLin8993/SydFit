@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { sendBarkNotification } from "../src/bark.js";
+import { sendBarkNotification } from "../src/services/bark.js";
 
 const config = {
 	barkServerUrl: "https://api.day.app",

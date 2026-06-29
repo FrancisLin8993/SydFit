@@ -17,7 +17,7 @@ mock.module("@google-cloud/tasks", {
 });
 
 // Mock the structured logger
-mock.module("../src/logger.js", {
+mock.module("../src/utils/logger.js", {
 	namedExports: {
 		writeLog: mockWriteLog,
 	},
@@ -28,7 +28,7 @@ describe("Cloud Tasks Utility", () => {
 
 	before(async () => {
 		// Dynamically import the module AFTER setting up the native mocks
-		cloudTasks = await import("../src/googleCloudTask.js");
+		cloudTasks = await import("../src/services/googleCloudTask.js");
 	});
 
 	beforeEach(() => {

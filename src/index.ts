@@ -13,7 +13,10 @@ import { weatherAgent } from "./agents/weatherAgent.js";
 import { sendBarkNotification } from "./services/bark.js";
 import { loadConfig } from "./utils/config.js";
 import { buildTransitErrorMessage } from "./services/traffic.js";
-import { addPreferenceToMemory, getRelevantMemories } from "./services/memoryService.js";
+import {
+	addPreferenceToMemory,
+	getRelevantMemories,
+} from "./services/memoryService.js";
 import { determineIntentAndMode } from "./intentRouter.js";
 import { writeLog } from "./utils/logger.js";
 

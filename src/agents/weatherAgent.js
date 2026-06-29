@@ -25,9 +25,6 @@ Style rules:
 - Write it for a phone push notification: direct, no fluff, no greetings.
 `,
 
-		tools: [
-			getUserLocationMemoryTool(config),
-			getWeatherTool(config),
-		],
+		tools: [getUserLocationMemoryTool(config), getWeatherTool(config)],
 	});
 };

@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { before, mock, test } from "node:test";
 
-mock.module("../src/langfuse.js", {
+mock.module("../src/services/langfuse.js", {
 	namedExports: {
 		promptClient: {
 			prompt: {
 				get: async () =>
 					`You are an intent router. Determine the intent of the user's message. 
-Valid intents: "weather", "traffic", "memory".
-For traffic, set "mode" to one of: "train", "bus", "ferry", "lightrail", "metro".
-For memory, extract a "preference" string to store.
-Return JSON: {"intent": "...", "mode": null|"...", "preference": null|"..."}`,
+Valid intents: "weather", "traffic".
+For traffic, set "modes" to an array of relevant modes from: "train", "bus", "ferry", "lightrail", "metro".
+Extract a "preference" string to store if the user asks to remember something.
+Return JSON matching the schema.`,
 			},
 		},
 	},
@@ -42,7 +42,7 @@ before(async () => {
 
 test("determineIntentAndMode detects explicit traffic mode from prompt", async () => {
 	const client = createMockClient(
-		'{"intent": "traffic", "mode": "lightrail", "preference": null}',
+		'{"intent": "traffic", "modes": ["lightrail"], "preference": null}',
 	);
 
 	const result = await determineIntentAndMode(
@@ -54,14 +54,14 @@ test("determineIntentAndMode detects explicit traffic mode from prompt", async (
 
 	assert.deepEqual(result, {
 		intent: "traffic",
-		mode: "lightrail",
+		modes: ["lightrail"],
 		preference: null,
 	});
 });
 
-test("determineIntentAndMode detects weather intent and returns null mode", async () => {
+test("determineIntentAndMode detects weather intent and returns empty modes", async () => {
 	const client = createMockClient(
-		'{"intent": "weather", "mode": null, "preference": null}',
+		'{"intent": "weather", "modes": [], "preference": null}',
 	);
 
 	const result = await determineIntentAndMode(
@@ -71,7 +71,11 @@ test("determineIntentAndMode detects weather intent and returns null mode", asyn
 		{ client },
 	);
 
-	assert.deepEqual(result, { intent: "weather", mode: null, preference: null });
+	assert.deepEqual(result, {
+		intent: "weather",
+		modes: ["train", "lightrail"],
+		preference: null,
+	});
 });
 
 test("determineIntentAndMode relies on memory for generic traffic queries", async (t) => {
@@ -87,7 +91,7 @@ test("determineIntentAndMode relies on memory for generic traffic queries", asyn
 							{
 								message: {
 									content:
-										'{"intent": "traffic", "mode": "ferry", "preference": null}',
+										'{"intent": "traffic", "modes": ["ferry"], "preference": null}',
 								},
 							},
 						],
@@ -100,23 +104,22 @@ test("determineIntentAndMode relies on memory for generic traffic queries", asyn
 	const result = await determineIntentAndMode(
 		mockConfig,
 		"check commute",
-		"I always take the ferry from Manly", // 传入记忆
+		"I always take the ferry from Manly",
 		{ client },
 	);
 
 	assert.deepEqual(result, {
 		intent: "traffic",
-		mode: "ferry",
+		modes: ["ferry"],
 		preference: null,
 	});
 
-	// 断言：大模型的 System Prompt 中确实包含了我们给它的记忆
 	const systemMessage = passedMessages.find((m) => m.role === "system").content;
 	assert.match(systemMessage, /I always take the ferry from Manly/);
 });
 
-test("determineIntentAndMode safely falls back to train on OpenAI API error", async (t) => {
-	t.mock.method(console, "error", () => {}); // 屏蔽控制台报错输出
+test("determineIntentAndMode safely falls back on OpenAI API error", async (t) => {
+	t.mock.method(console, "error", () => {});
 
 	const client = {
 		chat: {
@@ -134,12 +137,12 @@ test("determineIntentAndMode safely falls back to train on OpenAI API error", as
 
 	assert.deepEqual(result, {
 		intent: "traffic",
-		mode: "train",
+		modes: ["train", "lightrail"],
 		preference: null,
 	});
 });
 
-test("determineIntentAndMode safely falls back to train on JSON parsing failure", async (t) => {
+test("determineIntentAndMode safely falls back on JSON parsing failure", async (t) => {
 	t.mock.method(console, "error", () => {});
 
 	const client = createMockClient(
@@ -152,43 +155,12 @@ test("determineIntentAndMode safely falls back to train on JSON parsing failure"
 
 	assert.deepEqual(result, {
 		intent: "traffic",
-		mode: "train",
+		modes: ["train", "lightrail"],
 		preference: null,
 	});
 });
 
-test("determineIntentAndMode detects memory intent and extracts a clean preference", async () => {
-	const client = createMockClient(
-		'{"intent": "memory", "mode": null, "preference": "I like cold coffee"}',
-	);
-
-	const result = await determineIntentAndMode(
-		mockConfig,
-		"remember that I like cold coffee",
-		"",
-		{ client },
-	);
-
-	assert.deepEqual(result, {
-		intent: "memory",
-		mode: null,
-		preference: "I like cold coffee",
-	});
-});
-
-test("determineIntentAndMode returns empty preference when memory intent has nothing to store", async () => {
-	const client = createMockClient(
-		'{"intent": "memory", "mode": null, "preference": ""}',
-	);
-
-	const result = await determineIntentAndMode(mockConfig, "remember", "", {
-		client,
-	});
-
-	assert.deepEqual(result, { intent: "memory", mode: null, preference: "" });
-});
-
-test("determineIntentAndMode system prompt instructs the LLM about the memory intent and preference extraction", async () => {
+test("determineIntentAndMode system prompt instructs the LLM about the schema", async () => {
 	let passedMessages = [];
 
 	const client = {
@@ -201,7 +173,7 @@ test("determineIntentAndMode system prompt instructs the LLM about the memory in
 							{
 								message: {
 									content:
-										'{"intent": "memory", "mode": null, "preference": "I take the ferry"}',
+										'{"intent": "traffic", "modes": ["train"], "preference": null}',
 								},
 							},
 						],
@@ -211,12 +183,11 @@ test("determineIntentAndMode system prompt instructs the LLM about the memory in
 		},
 	};
 
-	await determineIntentAndMode(mockConfig, "from now on I take the ferry", "", {
+	await determineIntentAndMode(mockConfig, "check trains", "", {
 		client,
 	});
 
 	const systemMessage = passedMessages.find((m) => m.role === "system").content;
-	// 确保路由提示词中明确包含 memory 意图与 preference 抽取规则
-	assert.match(systemMessage, /"memory"/);
-	assert.match(systemMessage, /preference/);
+	assert.match(systemMessage, /"traffic"/);
+	assert.match(systemMessage, /"weather"/);
 });

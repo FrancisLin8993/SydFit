@@ -89,7 +89,9 @@ export const getWeatherTool = (config) =>
 		parameters: z.object({
 			location: z
 				.string()
-				.describe("The suburb or city to fetch weather for, e.g. 'Mascot' or 'Sydney CBD'."),
+				.describe(
+					"The suburb or city to fetch weather for, e.g. 'Mascot' or 'Sydney CBD'.",
+				),
 		}),
 		execute: async ({ location }, _runContext, fetcher = fetch) => {
 			const timezone = config.scheduleTimezone || "Australia/Sydney";

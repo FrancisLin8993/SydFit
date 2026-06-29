@@ -1,13 +1,23 @@
 import { describe, it, before, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 
-// Create native mocks
+const mockRun = mock.fn(async () => ({ finalOutput: "mock reply" }));
+mock.module("@openai/agents", {
+	exports: {
+		Runner: class {
+			run = mockRun;
+		},
+		Agent: class {},
+		tool: (opts) => opts,
+	},
+});
+
 const mockWriteLog = mock.fn();
-mock.module("../src/logger.js", { namedExports: { writeLog: mockWriteLog } });
+mock.module("../src/utils/logger.js", { exports: { writeLog: mockWriteLog } });
 
 const mockEnqueueSydFitTask = mock.fn(async () => ({ name: "mock-task" }));
-mock.module("../src/googleCloudTask.js", {
-	namedExports: { enqueueSydFitTask: mockEnqueueSydFitTask },
+mock.module("../src/services/googleCloudTask.js", {
+	exports: { enqueueSydFitTask: mockEnqueueSydFitTask },
 });
 
 const mockLoadConfig = mock.fn(() => ({
@@ -16,14 +26,14 @@ const mockLoadConfig = mock.fn(() => ({
 	openaiModel: "gpt-4o-mini",
 	barkDeviceKey: "fake-device-key",
 }));
-mock.module("../src/config.js", {
-	namedExports: { loadConfig: mockLoadConfig },
+mock.module("../src/utils/config.js", {
+	exports: { loadConfig: mockLoadConfig },
 });
 
 const mockAddPreference = mock.fn();
 const mockGetMemories = mock.fn(async () => "mock memory");
-mock.module("../src/memoryService.js", {
-	namedExports: {
+mock.module("../src/services/memoryService.js", {
+	exports: {
 		addPreferenceToMemory: mockAddPreference,
 		getRelevantMemories: mockGetMemories,
 	},
@@ -31,32 +41,44 @@ mock.module("../src/memoryService.js", {
 
 const mockDetermineIntent = mock.fn(async () => ({
 	intent: "weather",
-	mode: null,
+	modes: [],
 }));
 mock.module("../src/intentRouter.js", {
-	namedExports: { determineIntentAndMode: mockDetermineIntent },
+	exports: { determineIntentAndMode: mockDetermineIntent },
 });
 
-const mockGetWeather = mock.fn(async () => ({}));
-const mockGenerateClothing = mock.fn(async () => "Wear a jacket");
-mock.module("../src/weatherAgent.js", {
-	namedExports: {
-		getWeather: mockGetWeather,
-		generateClothingRecommendation: mockGenerateClothing,
-	},
+const mockWeatherAgent = mock.fn(() => ({}));
+const mockTrafficAgent = mock.fn(() => ({}));
+mock.module("../src/agents/weatherAgent.js", {
+	exports: { weatherAgent: mockWeatherAgent },
+});
+mock.module("../src/agents/trafficAgent.js", {
+	exports: { trafficAgent: mockTrafficAgent },
+});
+
+const mockBuildTransitError = mock.fn(() => "");
+mock.module("../src/services/traffic.js", {
+	exports: { buildTransitErrorMessage: mockBuildTransitError },
 });
 
 const mockSendBark = mock.fn(async () => {});
-mock.module("../src/bark.js", {
-	namedExports: { sendBarkNotification: mockSendBark },
+mock.module("../src/services/bark.js", {
+	exports: { sendBarkNotification: mockSendBark },
+});
+
+mock.module("../src/services/langfuse.js", {
+	exports: {
+		flushLangfuse: async () => {},
+		startActiveObservation: async (_name, fn) => fn({ update: () => {} }),
+		propagateAttributes: async (_attrs, fn) => fn(),
+	},
 });
 
 describe("Index API Routes", () => {
 	let app;
 
 	before(async () => {
-		// Dynamic import must happen after mock.module definitions
-		const index = await import("../src/index.js");
+		const index = await import("../src/index.ts");
 		app = index.app;
 	});
 

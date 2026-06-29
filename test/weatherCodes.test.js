@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { describeWeatherCode } from "../src/weatherCodes.js";
+import { describeWeatherCode } from "../src/utils/weatherCodes.js";
 
 test("describeWeatherCode returns known weather descriptions", () => {
 	assert.equal(describeWeatherCode(0), "Clear sky");

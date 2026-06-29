@@ -2,9 +2,11 @@ import { describe, it, before, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
 
 const mockWriteLog = mock.fn();
-mock.module("../src/logger.js", { namedExports: { writeLog: mockWriteLog } });
+mock.module("../src/utils/logger.js", {
+	namedExports: { writeLog: mockWriteLog },
+});
 
-mock.module("../src/config.js", {
+mock.module("../src/utils/config.js", {
 	namedExports: {
 		loadConfig: () => ({
 			openaiApiKey: "test-key",
@@ -13,12 +15,14 @@ mock.module("../src/config.js", {
 	},
 });
 
-mock.module("../src/langfuse.js", {
+mock.module("../src/services/langfuse.js", {
 	namedExports: {
 		promptClient: {
 			prompt: {
-				get: async () =>
-					"You are a traffic advisor. Filter alerts based on user memory.",
+				get: async () => ({
+					compile: ({ userTransitMemories }) =>
+						`You are a traffic advisor. User memories: ${userTransitMemories}`,
+				}),
 			},
 		},
 	},
@@ -27,16 +31,17 @@ mock.module("../src/langfuse.js", {
 const mockGetGcpAuthHeaders = mock.fn(async () => ({
 	Authorization: "Bearer test",
 }));
-mock.module("../src/gcpAuth.js", {
+mock.module("../src/services/gcpAuth.js", {
 	namedExports: { getGcpAuthHeaders: mockGetGcpAuthHeaders },
 });
 
-const mockGetRelevantMemories = mock.fn(async () => "User takes T8");
-mock.module("../src/memoryService.js", {
+const mockGetRelevantMemories = mock.fn(async () => ({
+	memories: [{ text: "User takes T8", score: 0.9 }],
+}));
+mock.module("../src/services/memoryService.js", {
 	namedExports: { getRelevantMemories: mockGetRelevantMemories },
 });
 
-// Construct an OpenAI mock structure compatible with the code
 const mockCreateChatCompletion = mock.fn(async () => ({
 	choices: [{ message: { content: "Smooth commute." } }],
 }));
@@ -47,10 +52,10 @@ mock.module("openai", {
 });
 
 describe("Traffic Agent", () => {
-	let trafficAgent;
+	let traffic;
 
 	before(async () => {
-		trafficAgent = await import("../src/trafficAgent.js");
+		traffic = await import("../src/services/traffic.js");
 	});
 
 	beforeEach(() => {
@@ -61,14 +66,18 @@ describe("Traffic Agent", () => {
 
 	it("should detect MCP errors correctly", () => {
 		assert.strictEqual(
-			trafficAgent.containsMcpError("[ERROR] System failure"),
+			traffic.containsMcpError({ error: "System failure" }),
 			true,
 		);
-		assert.strictEqual(trafficAgent.containsMcpError("All good"), false);
+		assert.strictEqual(traffic.containsMcpError({ data: "All good" }), false);
+		assert.strictEqual(
+			traffic.containsMcpError("[ERROR] System failure"),
+			true,
+		);
+		assert.strictEqual(traffic.containsMcpError("All good"), false);
 	});
 
 	it("should filter alerts through handleTrafficQuery using memory", async () => {
-		// Inject a mock fetcher to simulate MCP Server JSON response
 		const mockAlertsData = {
 			mode: "all",
 			alertCount: 1,
@@ -97,10 +106,11 @@ describe("Traffic Agent", () => {
 			openaiModel: "test-model",
 		};
 
-		const advice = await trafficAgent.handleTrafficQuery(
+		const advice = await traffic.handleTrafficQuery(
 			config,
 			"how is traffic",
 			"User takes T8",
+			["train"],
 		);
 
 		assert.strictEqual(advice, "Smooth commute.");
