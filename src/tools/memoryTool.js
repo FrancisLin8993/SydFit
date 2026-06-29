@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "@openai/agents";
-import { getRelevantMemories } from "../memoryService.js";
+import { getRelevantMemories } from "../services/memoryService.js";
 import { writeLog } from "../logger.js";
 
 export const getUserMemoryTool = (config) =>
