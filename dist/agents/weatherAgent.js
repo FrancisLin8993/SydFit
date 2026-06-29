@@ -2,9 +2,9 @@ import { Agent } from "@openai/agents";
 import { getWeatherTool } from "../tools/weatherTool.js";
 import { getUserLocationMemoryTool } from "../tools/locationMemoryTool.js";
 export const weatherAgent = (config) => {
-	return new Agent({
-		name: "sydney-weather-agent",
-		instructions: `
+    return new Agent({
+        name: "sydney-weather-agent",
+        instructions: `
 You are a Sydney weather and clothing advisor.
 
 Your job:
@@ -22,6 +22,6 @@ Style rules:
 - Keep the message under 200 characters.
 - Write it for a phone push notification: direct, no fluff, no greetings.
 `,
-		tools: [getUserLocationMemoryTool(config), getWeatherTool(config)],
-	});
+        tools: [getUserLocationMemoryTool(config), getWeatherTool(config)],
+    });
 };

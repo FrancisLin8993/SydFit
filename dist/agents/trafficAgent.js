@@ -3,9 +3,9 @@ import { filterAlertsTool } from "../tools/filterAlertsTool.js";
 import { getUserMemoryTool } from "../tools/memoryTool.js";
 import { getTfnswAlertsTool } from "../tools/tfnswTool.js";
 export const trafficAgent = (config) => {
-	return new Agent({
-		name: "sydney-traffic-agent",
-		instructions: `
+    return new Agent({
+        name: "sydney-traffic-agent",
+        instructions: `
 You are a Sydney public transport assistant.
 
 Your job:
@@ -21,10 +21,10 @@ Rules:
 - Be extremely concise
 - Do NOT include unrelated Sydney-wide alerts
 `,
-		tools: [
-			getUserMemoryTool(config),
-			getTfnswAlertsTool(config),
-			filterAlertsTool,
-		],
-	});
+        tools: [
+            getUserMemoryTool(config),
+            getTfnswAlertsTool(config),
+            filterAlertsTool,
+        ],
+    });
 };

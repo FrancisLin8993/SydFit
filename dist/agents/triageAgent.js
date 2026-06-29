@@ -2,7 +2,6 @@ import { Agent } from "@openai/agents";
 import { trafficAgent } from "trafficAgent.js";
 import { weatherAgent } from "weatherAgent.js";
 import { saveUserPreferenceTool } from "../tools/saveUserPreferenceTool.js";
-
 // CHANGED: replaces the manual determineIntentAndMode() classification call
 // + the hand-written if/else in index.ts (old "3.1 Core intent routing" and
 // "3.2 Memory storage intent" blocks). This single agent now owns the entire
@@ -18,11 +17,9 @@ import { saveUserPreferenceTool } from "../tools/saveUserPreferenceTool.js";
 //
 // Use Agent.create (not `new Agent`) so finalOutput's TypeScript type
 // correctly reflects the union of possible outputs across the handoff graph.
-export const triageAgent = (config) =>
-	Agent.create({
-		name: "sydfit-triage",
-
-		instructions: `
+export const triageAgent = (config) => Agent.create({
+    name: "sydfit-triage",
+    instructions: `
 You are the front door for SydFit, a Sydney-based personal assistant.
 
 For every incoming message, decide one of three things:
@@ -50,7 +47,6 @@ Be decisive — pick exactly one path per message. Do not ask the user which
 category they meant unless the message is genuinely ambiguous after
 considering all three options.
 `,
-
-		tools: [saveUserPreferenceTool(config)],
-		handoffs: [trafficAgent(config), weatherAgent(config)],
-	});
+    tools: [saveUserPreferenceTool(config)],
+    handoffs: [trafficAgent(config), weatherAgent(config)],
+});
