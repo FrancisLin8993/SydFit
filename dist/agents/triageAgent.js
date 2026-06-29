@@ -1,6 +1,6 @@
 import { Agent } from "@openai/agents";
-import { trafficAgent } from "trafficAgent.js";
-import { weatherAgent } from "weatherAgent.js";
+import { trafficAgent } from "./trafficAgent.js";
+import { weatherAgent } from "./weatherAgent.js";
 import { saveUserPreferenceTool } from "../tools/saveUserPreferenceTool.js";
 // CHANGED: replaces the manual determineIntentAndMode() classification call
 // + the hand-written if/else in index.ts (old "3.1 Core intent routing" and
