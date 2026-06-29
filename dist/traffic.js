@@ -1,7 +1,6 @@
 import { openaiClient } from "./openaiClient.js";
 import { observeOpenAI } from "@langfuse/openai";
 import { getGcpAuthHeaders } from "./gcpAuth.js";
-import { getRelevantMemories } from "./memoryService.js";
 import { promptClient } from "./langfuse.js";
 import { writeLog } from "./logger.js";
 /**

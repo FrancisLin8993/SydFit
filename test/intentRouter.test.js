@@ -78,7 +78,7 @@ test("determineIntentAndMode detects weather intent and returns empty modes", as
 	});
 });
 
-test("determineIntentAndMode relies on memory for generic traffic queries", async (t) => {
+test("determineIntentAndMode relies on memory for generic traffic queries", async () => {
 	let passedMessages = [];
 
 	const client = {

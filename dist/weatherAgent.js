@@ -8,12 +8,7 @@ const DEFAULT_COORDINATES = {
 	longitude: 151.193,
 	name: "Mascot, NSW",
 };
-export async function generateClothingRecommendation(
-	config,
-	query,
-	weather,
-	fetcher = fetch,
-) {
+export async function generateClothingRecommendation(config, query, weather) {
 	const userInput = buildRecommendationInput(weather, query);
 	const client = observeOpenAI(openaiClient, {
 		generationName: "clothing-advice",
