@@ -12,7 +12,6 @@ import { triageAgent } from "./agents/triageAgent.js";
 import { weatherAgent } from "./agents/weatherAgent.js";
 import { sendBarkNotification } from "./services/bark.js";
 import { loadConfig } from "./utils/config.js";
-import { handleTrafficQuery, buildTransitErrorMessage } from "./services/traffic.js";
 import { writeLog } from "./utils/logger.js";
 import { trafficAgent } from "./agents/trafficAgent.js";
 
@@ -251,36 +250,18 @@ app.post("/api/cron", async (c) => {
 
 						const clothingRecommendation = weatherResult.finalOutput;
 
-						const trafficError = buildTransitErrorMessage(trafficReport);
-						if (trafficError) {
-							writeLog(
-								"ERROR",
-								`❌ Traffic agent returned an error: ${trafficReport}`,
-							);
-							await sendBarkNotification(config, {
-								title: "❌ Transit Data Error",
-								subtitle: "MCP Server / TfNSW API",
-								body: trafficError,
-							});
-						}
-
 						const notifications = [
 							sendBarkNotification(config, {
 								title: "☀️ Today's Outfit",
 								subtitle: "Morning weather-based recommendation",
 								body: clothingRecommendation,
 							}),
-						];
-
-						if (!trafficError) {
-							notifications.push(
-								sendBarkNotification(config, {
+							sendBarkNotification(config, {
 									title: "🚆 Transport Alerts",
 									subtitle: "Morning Commute",
 									body: trafficReport,
 								}),
-							);
-						}
+						];
 
 						await Promise.all(notifications);
 						writeLog(`✅ [Cron] Morning briefing pushed successfully.`);
