@@ -4,7 +4,7 @@ import { withHeadroom } from "headroom-ai/openai";
 import OpenAI from "openai";
 import { observeOpenAI } from "@langfuse/openai";
 import { promptClient } from "./langfuse.js";
-import { writeLog } from "./logger.js";
+import { writeLog } from "./utils/logger.js";
 
 const IntentRouterSchema = z.object({
 	intent: z.enum(["traffic", "weather"]),

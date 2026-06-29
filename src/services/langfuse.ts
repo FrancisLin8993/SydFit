@@ -6,7 +6,7 @@ import {
 	propagateAttributes,
 } from "@langfuse/tracing";
 import { LangfuseClient } from "@langfuse/client";
-import { writeLog } from "./logger.js";
+import { writeLog } from "../utils/logger.js";
 
 export const promptClient = new LangfuseClient();
 

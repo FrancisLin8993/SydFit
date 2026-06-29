@@ -3,7 +3,7 @@ import { observeOpenAI } from "@langfuse/openai";
 import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { getRelevantMemories } from "./memoryService.js";
 import { promptClient } from "./langfuse.js";
-import { writeLog } from "./logger.js";
+import { writeLog } from "../utils/logger.js";
 
 /**
  * Fetches structured alerts JSON from the TfNSW MCP server

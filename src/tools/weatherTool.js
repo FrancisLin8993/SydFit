@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "@openai/agents";
-import { describeWeatherCode } from "../weatherCodes.js";
-import { writeLog } from "../logger.js";
+import { describeWeatherCode } from "../utils/weatherCodes.js";
+import { writeLog } from "../utils/logger.js";
 
 const DEFAULT_COORDINATES = {
 	latitude: -33.928,

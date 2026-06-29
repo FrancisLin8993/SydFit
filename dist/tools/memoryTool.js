@@ -1,7 +1,7 @@
 import { tool } from "@openai/agents";
 import { z } from "zod";
-import { getRelevantMemories } from "../memoryService.js";
-import { writeLog } from "../logger.js";
+import { getRelevantMemories } from "../services/memoryService.js";
+import { writeLog } from "../utils/logger.js";
 export const getUserMemoryTool = (config) => tool({
     name: "get_user_transit_memory",
     description: "Fetches the user's saved transit preferences and habits from long-term memory (e.g. preferred train line, commute patterns).",

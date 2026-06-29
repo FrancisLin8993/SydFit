@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "@openai/agents";
 import { getGcpAuthHeaders } from "../gcpAuth.js";
-import { writeLog } from "../logger.js";
+import { writeLog } from "../utils/logger.js";
 export const getTfnswAlertsTool = (config) => tool({
     name: "get_tfnsw_alerts",
     description: "Fetches real-time Transport for NSW (TfNSW) service alerts for a single transport mode. Call this once per relevant mode (e.g. once for 'train', once for 'lightrail') if the user commutes on multiple modes.",

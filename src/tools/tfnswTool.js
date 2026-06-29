@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "@openai/agents";
 import { getGcpAuthHeaders } from "../gcpAuth.js";
-import { writeLog } from "../logger.js";
+import { writeLog } from "../utils/logger.js";
 
 export const getTfnswAlertsTool = (config) =>
 	tool({

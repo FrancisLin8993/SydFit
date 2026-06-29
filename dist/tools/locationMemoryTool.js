@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "@openai/agents";
-import { getRelevantMemories } from "../memoryService.js";
-import { writeLog } from "../logger.js";
+import { getRelevantMemories } from "../services/memoryService.js";
+import { writeLog } from "../utils/logger.js";
 // CHANGED: location memory retrieval was previously inlined directly inside
 // getWeather() in weatherAgent.js, calling getRelevantMemories() as a plain
 // function call. For the Agent SDK pattern, this becomes its own tool — same

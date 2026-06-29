@@ -2,20 +2,20 @@ import {
 	flushLangfuse,
 	startActiveObservation,
 	propagateAttributes,
-} from "./langfuse.js";
+} from "./services/langfuse.js";
 import { Runner } from "@openai/agents";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { swaggerUI } from "@hono/swagger-ui";
-import { enqueueSydFitTask } from "./googleCloudTask.js";
+import { enqueueSydFitTask } from "./services/googleCloudTask.js";
 import { trafficAgent } from "./agents/trafficAgent.js";
 import { weatherAgent } from "./agents/weatherAgent.js";
-import { sendBarkNotification } from "./bark.js";
-import { loadConfig } from "./config.js";
-import { buildTransitErrorMessage } from "./traffic.js";
-import { addPreferenceToMemory, getRelevantMemories } from "./memoryService.js";
+import { sendBarkNotification } from "./services/bark.js";
+import { loadConfig } from "./utils/config.js";
+import { buildTransitErrorMessage } from "./services/traffic.js";
+import { addPreferenceToMemory, getRelevantMemories } from "./services/memoryService.js";
 import { determineIntentAndMode } from "./intentRouter.js";
-import { writeLog } from "./logger.js";
+import { writeLog } from "./utils/logger.js";
 
 const app = new Hono();
 const config = loadConfig();
