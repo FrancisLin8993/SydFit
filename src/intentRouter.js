@@ -3,7 +3,7 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { withHeadroom } from "headroom-ai/openai";
 import OpenAI from "openai";
 import { observeOpenAI } from "@langfuse/openai";
-import { promptClient } from "./langfuse.js";
+import { promptClient } from "./services/langfuse.js";
 import { writeLog } from "./utils/logger.js";
 
 const IntentRouterSchema = z.object({
