@@ -139,14 +139,6 @@ app.post("/api/process-task", async (c) => {
 						`[Process Task API] 📥 Received client request: "${query}"`,
 					);
 					span.update({ input: { query } });
-
-					// CHANGED: the old "3.1 Core intent routing" (manual
-					// determineIntentAndMode call) and "3.2 Memory storage intent"
-					// (manual if/else + direct addPreferenceToMemory call) blocks
-					// are both replaced by a single triage agent run. The agent
-					// decides whether to call save_preference directly (memory
-					// case) or hand off to the traffic/weather specialist —
-					// all in one Runner.run() call.
 					const agent = triageAgent(config);
 					const runner = new Runner();
 
@@ -157,6 +149,14 @@ app.post("/api/process-task", async (c) => {
 						agent,
 						JSON.stringify({ input: query }),
 					);
+
+					writeLog("DEBUG", "[Triage Agent] Full run trace", {
+						newItems: result.newItems?.map((item) => ({
+							type: item.type,
+							// structure varies by item type — log the whole thing while debugging
+							raw: JSON.stringify(item),
+						})),
+					});
 
 					const aiReply = result.finalOutput;
 					const handledBy = result.lastAgent?.name || "sydfit-triage";
