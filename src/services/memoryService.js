@@ -107,8 +107,6 @@ export async function getRelevantMemories(config, query) {
 
 		const responseData = await response.json();
 
-
-
 		const memoriesArray = responseData?.memories?.results || [];
 
 		// 🔥 IMPORTANT: preserve structure
