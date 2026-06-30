@@ -5,8 +5,8 @@ import { weatherAgent } from "./weatherAgent.js";
 import { saveUserPreferenceTool } from "../tools/saveUserPreferenceTool.js";
 import { writeLog } from "../utils/logger.js";
 
-const message = promptClient.prompt.get("triage-agent");
-writeLog("INOF", `triage agent message: ${message}`);
+const message = await promptClient.prompt.get("triage-agent");
+writeLog("INFO", `triage agent message: ${JSON.stringify(message)}`);
 export const triageAgent = (config) =>
 	Agent.create({
 		name: "sydfit-triage",
