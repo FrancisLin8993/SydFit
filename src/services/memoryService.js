@@ -60,7 +60,15 @@ export async function getRelevantMemories(config, query) {
 			};
 		}
 
+		const start = performance.now();
+
+		console.time("gcp-auth");
+
 		const gcpAuthHeaders = await getGcpAuthHeaders(config.mem0ApiUrl);
+
+		console.timeEnd("gcp-auth");
+
+		console.time("fetch-from-mem0");
 
 		const workerToken = process.env.MEM0_ACCESS_TOKEN;
 		const searchEndpoint = `${config.mem0ApiUrl}/memory/search`;
@@ -93,7 +101,13 @@ export async function getRelevantMemories(config, query) {
 			};
 		}
 
+		console.timeEnd("fetch-from-mem0");
+
+		console.log("TOTAL", performance.now() - start);
+
 		const responseData = await response.json();
+
+
 
 		const memoriesArray = responseData?.memories?.results || [];
 
