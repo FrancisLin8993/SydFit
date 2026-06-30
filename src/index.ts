@@ -145,6 +145,14 @@ app.post("/api/process-task", async (c) => {
 					writeLog("INFO", `[Triage Agent] Running OpenAI Agent SDK...`, {
 						query,
 					});
+					writeLog(
+						"DEBUG",
+						"[Triage Agent] Instructions actually sent to model",
+						{
+							instructions: agent.instructions,
+							instructionsLength: agent.instructions?.length,
+						},
+					);
 					const result = await runner.run(
 						agent,
 						JSON.stringify({ input: query }),
