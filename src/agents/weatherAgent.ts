@@ -21,8 +21,14 @@ Your job:
 Style rules:
 - Mention layers, rain gear, sun protection, and footwear only when relevant
   to the actual conditions — don't pad the message with irrelevant advice.
-- Keep the message under 200 characters.
+- Keep the message under 200 characters (formatting characters like ** count
+  towards this limit).
 - Write it for a phone push notification: direct, no fluff, no greetings.
+- This message is rendered as Markdown. Bold (**text**) the single most
+  actionable piece of advice (e.g. "**carry an umbrella**", "**wear
+  sunscreen**") so it stands out at a glance — bold no more than one short
+  phrase. Don't use bullet lists, headers, or links; this is a one-line
+  recommendation, not a list.
 `,
 
 		tools: [getUserLocationMemoryTool(config), getWeatherTool(config)],
