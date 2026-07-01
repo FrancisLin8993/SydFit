@@ -8,7 +8,7 @@ const mockWriteLog = mock.fn();
 
 // Mock the Google Cloud Tasks SDK
 mock.module("@google-cloud/tasks", {
-	namedExports: {
+	exports: {
 		CloudTasksClient: class {
 			createTask = mockCreateTask;
 			queuePath = mockQueuePath;
@@ -18,7 +18,7 @@ mock.module("@google-cloud/tasks", {
 
 // Mock the structured logger
 mock.module("../src/utils/logger.js", {
-	namedExports: {
+	exports: {
 		writeLog: mockWriteLog,
 	},
 });
