@@ -71,6 +71,7 @@ function extractLines(memory) {
 	if (text.includes("t8")) lines.push("t8");
 	if (text.includes("t9")) lines.push("t9");
 	if (text.includes("airport")) lines.push("airport");
+	if (text.includes("lightrail")) lines.push("lightrail");
 
 	return lines;
 }
