@@ -21,8 +21,6 @@ export const getTfnswAlertsTool = (config) =>
 
 			const start = performance.now();
 
-			console.time("fetch-tfnsw");
-
 			const response = await fetch(fetchUrl, {
 				method: "POST",
 				headers: {
@@ -39,8 +37,6 @@ export const getTfnswAlertsTool = (config) =>
 			if (!response.ok) {
 				throw new Error(`TfNSW tool failed: ${response.status}`);
 			}
-
-			console.timeEnd("fetch-tfnsw");
 
 			console.log("TOTAL", performance.now() - start);
 
