@@ -42,6 +42,8 @@ export async function sendBarkNotification(
 
 		writeLog("INFO", "Bark notification sent successfully", {
 			title: notification.title,
+			subtitle: notification.subtitle,
+			markdown: notification.body
 		});
 	} catch (error) {
 		writeLog("ERROR", "Failed to send push notification", {
