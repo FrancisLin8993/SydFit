@@ -48,6 +48,10 @@ describe("trafficAgent factory", () => {
 			agent.tools.map((t) => t.name),
 			["get_user_transit_lines", "get_tfnsw_alerts", "filter_relevant_alerts"],
 		);
+		// Regression guard: without a forced tool choice, a vague/short input
+		// (e.g. "Alert") can lead the model to answer directly instead of
+		// checking transit preferences or alerts first — see trafficAgent.ts.
+		assert.equal(agent.modelSettings?.toolChoice, "required");
 	});
 
 	it("threads config through to the transit-lines and alerts tool factories", () => {

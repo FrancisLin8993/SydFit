@@ -44,6 +44,10 @@ describe("weatherAgent factory", () => {
 			agent.tools.map((t) => t.name),
 			["get_user_location_memory", "get_weather"],
 		);
+		// Regression guard: without a forced tool choice, the model could
+		// answer directly instead of checking location/weather first — see
+		// weatherAgent.ts and the matching guard in trafficAgent.ts.
+		assert.equal(agent.modelSettings?.toolChoice, "required");
 	});
 
 	it("threads config through to both tool factories", () => {

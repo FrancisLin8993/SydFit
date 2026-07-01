@@ -32,5 +32,13 @@ Style rules:
 `,
 
 		tools: [getUserLocationMemoryTool(config), getWeatherTool(config)],
+
+		// Forces the model to call a tool on its first turn instead of
+		// answering directly — see trafficAgent.ts for the observed failure
+		// mode this guards against. resetToolChoice defaults to true, so
+		// this only applies until the first tool call, not the whole run.
+		modelSettings: {
+			toolChoice: "required",
+		},
 	});
 };

@@ -15,7 +15,7 @@ export const CANONICAL_LINES = [
 	"T9",
 	"AIRPORT",
 	"LIGHTRAIL",
-	"METRO"
+	"METRO",
 ] as const;
 
 export type CanonicalLine = (typeof CANONICAL_LINES)[number];
@@ -65,7 +65,7 @@ const LINE_ALIASES: Record<string, CanonicalLine> = {
 	L2: "LIGHTRAIL",
 	L3: "LIGHTRAIL",
 	METRO: "METRO",
-	M1: "METRO"
+	M1: "METRO",
 };
 
 /**

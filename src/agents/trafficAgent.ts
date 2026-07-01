@@ -57,5 +57,15 @@ Rules:
 			getTfnswAlertsTool(config),
 			filterAlertsTool,
 		],
+
+		// Forces the model to call a tool on its first turn instead of
+		// answering directly — otherwise a vague/short input (e.g. "Alert")
+		// can lead the model to skip straight to a guessed answer without
+		// ever checking transit preferences or alerts. resetToolChoice
+		// defaults to true, so this only applies until the first tool call,
+		// not the whole run.
+		modelSettings: {
+			toolChoice: "required",
+		},
 	});
 };
