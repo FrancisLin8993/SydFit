@@ -9,7 +9,7 @@ async function run(input) {
 
 test("filterAlertsTool keeps only alerts matching preferred lines", async () => {
 	const result = await run({
-		memories: "User takes the T8 train from Central",
+		preferredLines: ["T8"],
 		alertsByMode: [
 			{
 				mode: "train",
@@ -21,16 +21,16 @@ test("filterAlertsTool keeps only alerts matching preferred lines", async () => 
 		],
 	});
 
-	assert.deepEqual(result.matched_preferences, ["t8"]);
+	assert.deepEqual(result.matched_preferences, ["T8"]);
 	assert.equal(result.relevant_alerts.length, 1);
 	assert.equal(result.relevant_alerts[0].mode, "train");
 	assert.equal(result.relevant_alerts[0].alerts.length, 1);
 	assert.equal(result.relevant_alerts[0].alerts[0].title, "T8 Line Delay");
 });
 
-test("filterAlertsTool drops modes with no relevant alerts", async () => {
+test("filterAlertsTool drops modes with no relevant alerts and reports no matched preferences", async () => {
 	const result = await run({
-		memories: "User takes T1 only",
+		preferredLines: ["T1"],
 		alertsByMode: [
 			{
 				mode: "lightrail",
@@ -40,12 +40,15 @@ test("filterAlertsTool drops modes with no relevant alerts", async () => {
 	});
 
 	assert.deepEqual(result.relevant_alerts, []);
-	assert.deepEqual(result.matched_preferences, ["t1"]);
+	// Unlike the old prose-mining version, matched_preferences now reflects
+	// actual alert hits, not just echoed-back guesses — so an unmatched
+	// preference no longer appears here.
+	assert.deepEqual(result.matched_preferences, []);
 });
 
-test("filterAlertsTool extracts multiple lines and the airport keyword", async () => {
+test("filterAlertsTool matches multiple preferred lines against alert text", async () => {
 	const result = await run({
-		memories: "User commutes on T4 and the Airport line",
+		preferredLines: ["T4", "AIRPORT"],
 		alertsByMode: [
 			{
 				mode: "train",
@@ -58,13 +61,28 @@ test("filterAlertsTool extracts multiple lines and the airport keyword", async (
 		],
 	});
 
-	assert.deepEqual(result.matched_preferences, ["t4", "airport"]);
+	assert.deepEqual(result.matched_preferences.sort(), ["AIRPORT", "T4"]);
 	assert.equal(result.relevant_alerts[0].alerts.length, 2);
 });
 
-test("filterAlertsTool returns no matched preferences when memory has no known lines", async () => {
+test("filterAlertsTool silently ignores unknown/malformed line codes without crashing", async () => {
 	const result = await run({
-		memories: "User walks to work",
+		preferredLines: ["NOT_A_REAL_LINE", "T8"],
+		alertsByMode: [
+			{
+				mode: "train",
+				alerts: [{ title: "T8 Line Delay", description: "Trackwork on T8" }],
+			},
+		],
+	});
+
+	assert.deepEqual(result.matched_preferences, ["T8"]);
+	assert.equal(result.relevant_alerts[0].alerts.length, 1);
+});
+
+test("filterAlertsTool returns no matches when preferredLines is empty", async () => {
+	const result = await run({
+		preferredLines: [],
 		alertsByMode: [
 			{ mode: "bus", alerts: [{ title: "Bus delay", description: "traffic" }] },
 		],
@@ -72,4 +90,28 @@ test("filterAlertsTool returns no matched preferences when memory has no known l
 
 	assert.deepEqual(result.matched_preferences, []);
 	assert.deepEqual(result.relevant_alerts, []);
+});
+
+test("filterAlertsTool does not false-positive match T1 inside unrelated alert text", async () => {
+	// The old naive `content.includes("t1")` matcher would have wrongly
+	// matched "t1" inside "t19" here, incorrectly flagging a T9-area bus
+	// alert as relevant to a user who only prefers T1. The new word-boundary
+	// matcher requires \bT1\b, which "T19" does not satisfy.
+	const result = await run({
+		preferredLines: ["T1"],
+		alertsByMode: [
+			{
+				mode: "bus",
+				alerts: [
+					{
+						title: "Replacement bus T19 diverted via Anzac Parade",
+						description: "Diversion in effect",
+					},
+				],
+			},
+		],
+	});
+
+	assert.deepEqual(result.relevant_alerts, []);
+	assert.deepEqual(result.matched_preferences, []);
 });

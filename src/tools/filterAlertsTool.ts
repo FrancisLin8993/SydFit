@@ -1,15 +1,20 @@
 import { tool } from "@openai/agents";
 import { z } from "zod";
+import {
+	alertMentionsLine,
+	type CanonicalLine,
+	normalizeLine,
+} from "../utils/transitLines.js";
 
 export const filterAlertsTool = tool({
 	name: "filter_relevant_alerts",
 	description:
-		"Filters a set of TfNSW alerts down to only those relevant to the user's preferred transit lines, based on their transit memories.",
+		"Filters a set of TfNSW alerts down to only those relevant to the user's preferred transit lines.",
 	parameters: z.object({
-		memories: z
-			.string()
+		preferredLines: z
+			.array(z.string())
 			.describe(
-				"The user's transit memory text, used to determine which lines/modes they care about.",
+				"The user's preferred canonical transit line codes (e.g. ['T8', 'AIRPORT']), as returned by get_user_transit_lines.",
 			),
 		alertsByMode: z
 			.array(
@@ -29,15 +34,30 @@ export const filterAlertsTool = tool({
 				"Raw alert blocks grouped by transport mode, as returned by the TfNSW alerts tool.",
 			),
 	}),
-	execute: async ({ memories, alertsByMode }) => {
-		const preferredLines = extractLines(memories);
+	execute: async ({ preferredLines, alertsByMode }) => {
+		// Defensive normalization: unrecognized/malformed codes are dropped
+		// rather than causing a runtime error, since preferredLines could in
+		// principle come from a stale or unexpected source.
+		const normalizedLines = preferredLines
+			.map((line) => normalizeLine(line))
+			.filter((line): line is CanonicalLine => line !== null);
 
 		const filtered = [];
+		const matchedPreferences = new Set<string>();
 
 		for (const block of alertsByMode) {
-			const matched = block.alerts.filter((alert) =>
-				isRelevant(alert, preferredLines),
-			);
+			const matched = block.alerts.filter((alert) => {
+				const content = `${alert.title} ${alert.description}`;
+				const hitLines = normalizedLines.filter((line) =>
+					alertMentionsLine(content, line),
+				);
+
+				for (const line of hitLines) {
+					matchedPreferences.add(line);
+				}
+
+				return hitLines.length > 0;
+			});
 
 			if (matched.length > 0) {
 				filtered.push({
@@ -49,35 +69,7 @@ export const filterAlertsTool = tool({
 
 		return {
 			relevant_alerts: filtered,
-			matched_preferences: preferredLines,
+			matched_preferences: Array.from(matchedPreferences),
 		};
 	},
 });
-
-/**
- * naive but effective extraction
- */
-function extractLines(memory) {
-	const text = JSON.stringify(memory).toLowerCase();
-
-	const lines = [];
-
-	if (text.includes("t1")) lines.push("t1");
-	if (text.includes("t2")) lines.push("t2");
-	if (text.includes("t3")) lines.push("t3");
-	if (text.includes("t4")) lines.push("t4");
-	if (text.includes("t5")) lines.push("t5");
-	if (text.includes("t6")) lines.push("t6");
-	if (text.includes("t8")) lines.push("t8");
-	if (text.includes("t9")) lines.push("t9");
-	if (text.includes("airport")) lines.push("airport");
-	if (text.includes("lightrail")) lines.push("lightrail");
-
-	return lines;
-}
-
-function isRelevant(alert, lines) {
-	const content = `${alert.title} ${alert.description}`.toLowerCase();
-
-	return lines.some((line) => content.includes(line));
-}

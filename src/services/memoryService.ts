@@ -4,7 +4,11 @@ import { getGcpAuthHeaders } from "./gcpAuth.js";
 /**
  * Add a memory (unchanged logic, but cleaner error handling)
  */
-export async function addPreferenceToMemory(config, text) {
+export async function addPreferenceToMemory(
+	config,
+	text,
+	metadata?: Record<string, unknown>,
+) {
 	try {
 		const mem0ApiUrl = config.mem0ApiUrl;
 		if (!mem0ApiUrl)
@@ -26,6 +30,7 @@ export async function addPreferenceToMemory(config, text) {
 			body: JSON.stringify({
 				text,
 				user_id: "francis",
+				...(metadata ? { metadata } : {}),
 			}),
 		});
 
@@ -115,6 +120,7 @@ export async function getRelevantMemories(config, query) {
 				text: m.memory,
 				score: m.score ?? null,
 				timestamp: m.created_at ?? null,
+				metadata: m.metadata ?? null,
 			}))
 			.filter((m) => m.text);
 

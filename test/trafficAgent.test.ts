@@ -10,12 +10,12 @@ mock.module("@openai/agents", {
 	exports: { Agent: MockAgent },
 });
 
-const mockGetUserMemoryTool = mock.fn((config) => ({
-	name: "get_user_memory",
+const mockGetUserTransitLinesTool = mock.fn((config) => ({
+	name: "get_user_transit_lines",
 	config,
 }));
-mock.module("../src/tools/memoryTool.js", {
-	exports: { getUserMemoryTool: mockGetUserMemoryTool },
+mock.module("../src/tools/transitLinesMemoryTool.js", {
+	exports: { getUserTransitLinesTool: mockGetUserTransitLinesTool },
 });
 
 const mockGetTfnswAlertsTool = mock.fn((config) => ({
@@ -37,7 +37,7 @@ describe("trafficAgent factory", () => {
 		({ trafficAgent } = await import("../src/agents/trafficAgent.js"));
 	});
 
-	it("builds a sydney-traffic-agent with memory, alerts, and filter tools", () => {
+	it("builds a sydney-traffic-agent with transit-lines, alerts, and filter tools", () => {
 		const config = { mcpServerUrl: "https://mcp.test" };
 		const agent = trafficAgent(config);
 
@@ -46,15 +46,18 @@ describe("trafficAgent factory", () => {
 		assert.match(agent.instructions, /Sydney public transport assistant/);
 		assert.deepEqual(
 			agent.tools.map((t) => t.name),
-			["get_user_memory", "get_tfnsw_alerts", "filter_relevant_alerts"],
+			["get_user_transit_lines", "get_tfnsw_alerts", "filter_relevant_alerts"],
 		);
 	});
 
-	it("threads config through to the memory and alerts tool factories", () => {
+	it("threads config through to the transit-lines and alerts tool factories", () => {
 		const config = { mcpServerUrl: "https://another.test" };
 		trafficAgent(config);
 
-		assert.equal(mockGetUserMemoryTool.mock.calls.at(-1).arguments[0], config);
+		assert.equal(
+			mockGetUserTransitLinesTool.mock.calls.at(-1).arguments[0],
+			config,
+		);
 		assert.equal(mockGetTfnswAlertsTool.mock.calls.at(-1).arguments[0], config);
 	});
 });

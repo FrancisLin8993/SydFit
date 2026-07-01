@@ -96,6 +96,26 @@ describe("memoryService", () => {
 			assert.match(result.error, /502/);
 			assert.match(result.error, /upstream down/);
 		});
+
+		it("includes metadata in the request body when provided", async () => {
+			let captured: any;
+			global.fetch = mock.fn(async (url, options) => {
+				captured = { url, options };
+				return { ok: true };
+			});
+
+			await addPreferenceToMemory(
+				{ mem0ApiUrl: "https://mem0.test", mem0AccessToken: "mem0-token" },
+				"User's preferred transit lines: T8.",
+				{ type: "transit_lines", lines: ["T8"] },
+			);
+
+			assert.deepEqual(JSON.parse(captured.options.body), {
+				text: "User's preferred transit lines: T8.",
+				user_id: "francis",
+				metadata: { type: "transit_lines", lines: ["T8"] },
+			});
+		});
 	});
 
 	describe("getRelevantMemories", () => {
@@ -137,10 +157,47 @@ describe("memoryService", () => {
 			assert.equal(captured.url, "https://mem0.test/memory/search");
 			assert.equal(captured.options.headers["X-Worker-Token"], "env-token");
 			assert.deepEqual(result.memories, [
-				{ text: "User takes T8", score: 0.9, timestamp: "t1" },
-				{ text: "Prefers window seat", score: 0.7, timestamp: null },
+				{ text: "User takes T8", score: 0.9, timestamp: "t1", metadata: null },
+				{
+					text: "Prefers window seat",
+					score: 0.7,
+					timestamp: null,
+					metadata: null,
+				},
 			]);
 			assert.equal(result.query, "transit preferences");
+		});
+
+		it("surfaces metadata on results that include it", async () => {
+			global.fetch = mock.fn(async () => ({
+				ok: true,
+				json: async () => ({
+					memories: {
+						results: [
+							{
+								memory: "User's preferred transit lines: T8.",
+								score: 0.95,
+								created_at: "t1",
+								metadata: { type: "transit_lines", lines: ["T8"] },
+							},
+						],
+					},
+				}),
+			}));
+
+			const result = await getRelevantMemories(
+				{ mem0ApiUrl: "https://mem0.test" },
+				"transit lines",
+			);
+
+			assert.deepEqual(result.memories, [
+				{
+					text: "User's preferred transit lines: T8.",
+					score: 0.95,
+					timestamp: "t1",
+					metadata: { type: "transit_lines", lines: ["T8"] },
+				},
+			]);
 		});
 
 		it("returns an empty memories list and the error text on a failed search", async () => {

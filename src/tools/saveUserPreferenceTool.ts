@@ -7,7 +7,7 @@ export const saveUserPreferenceTool = (config) =>
 	tool({
 		name: "save_preference",
 		description:
-			"Saves a personal preference, habit, or instruction to the user's long-term memory for future use. Call this when the user wants SydFit to remember something about them (e.g. 'I prefer the T8 train', 'I need a scarf on windy days'). Extract a clean, third-person statement before calling — e.g. turn 'remember that I hate getting wet' into 'User dislikes getting wet, prefers covered transport routes'.",
+			"Saves a personal preference, habit, or instruction to the user's long-term memory for future use. Call this when the user wants SydFit to remember something about them (e.g. 'I need a scarf on windy days'). Extract a clean, third-person statement before calling — e.g. turn 'remember that I hate getting wet' into 'User dislikes getting wet, prefers covered transport routes'. Do NOT use this for transit line preferences (e.g. 'I take the T8') — use save_transit_lines for those instead.",
 		parameters: z.object({
 			preference: z
 				.string()
