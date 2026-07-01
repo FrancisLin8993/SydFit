@@ -1,6 +1,6 @@
 import { Agent } from "@openai/agents";
-import { getWeatherTool } from "../tools/weatherTool.js";
 import { getUserLocationMemoryTool } from "../tools/locationMemoryTool.js";
+import { getWeatherTool } from "../tools/weatherTool.js";
 
 export const weatherAgent = (config) => {
 	return new Agent({

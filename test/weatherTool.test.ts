@@ -10,7 +10,9 @@ mock.module("../src/utils/config.js", {
 	},
 });
 
-let normalizeWeather, first, getWeatherTool;
+let normalizeWeather: any;
+let first: any;
+let getWeatherTool: any;
 
 const openMeteoPayload = {
 	current: {

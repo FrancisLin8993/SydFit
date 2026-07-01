@@ -14,7 +14,8 @@ mock.module("../src/utils/logger.js", {
 });
 
 describe("memoryService", () => {
-	let addPreferenceToMemory, getRelevantMemories;
+	let addPreferenceToMemory: any;
+	let getRelevantMemories: any;
 	const originalFetch = global.fetch;
 	const originalToken = process.env.MEM0_ACCESS_TOKEN;
 
@@ -35,7 +36,7 @@ describe("memoryService", () => {
 	});
 
 	describe("addPreferenceToMemory", () => {
-		it("fails fast when mem0ApiUrl is not configured", async (t) => {
+		it("fails fast when mem0ApiUrl is not configured", async (_t) => {
 			const result = await addPreferenceToMemory({}, "User likes T8");
 			assert.deepEqual(result, {
 				success: false,
@@ -55,7 +56,7 @@ describe("memoryService", () => {
 		});
 
 		it("posts the preference text and merges GCP auth headers", async () => {
-			let captured;
+			let captured: any;
 			global.fetch = mock.fn(async (url, options) => {
 				captured = { url, options };
 				return { ok: true };
@@ -111,7 +112,7 @@ describe("memoryService", () => {
 		});
 
 		it("maps and filters search results, trimming the worker token header", async () => {
-			let captured;
+			let captured: any;
 			global.fetch = mock.fn(async (url, options) => {
 				captured = { url, options };
 				return {

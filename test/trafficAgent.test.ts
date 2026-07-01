@@ -31,7 +31,7 @@ mock.module("../src/tools/filterAlertsTool.js", {
 });
 
 describe("trafficAgent factory", () => {
-	let trafficAgent;
+	let trafficAgent: any;
 
 	before(async () => {
 		({ trafficAgent } = await import("../src/agents/trafficAgent.js"));

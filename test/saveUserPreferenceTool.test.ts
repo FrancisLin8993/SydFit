@@ -12,7 +12,7 @@ mock.module("../src/utils/logger.js", {
 });
 
 describe("saveUserPreferenceTool (save_preference)", () => {
-	let saveUserPreferenceTool;
+	let saveUserPreferenceTool: any;
 
 	before(async () => {
 		({ saveUserPreferenceTool } = await import(

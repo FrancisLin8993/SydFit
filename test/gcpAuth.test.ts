@@ -16,7 +16,7 @@ mock.module("../src/utils/logger.js", {
 });
 
 describe("gcpAuth", () => {
-	let getGcpAuthHeaders;
+	let getGcpAuthHeaders: any;
 
 	before(async () => {
 		({ getGcpAuthHeaders } = await import("../src/services/gcpAuth.js"));

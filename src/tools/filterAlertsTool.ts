@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { tool } from "@openai/agents";
+import { z } from "zod";
 
 export const filterAlertsTool = tool({
 	name: "filter_relevant_alerts",

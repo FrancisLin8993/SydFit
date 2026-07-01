@@ -11,7 +11,7 @@ const config = {
 };
 
 test("sendBarkNotification posts JSON payload with markdown to Bark", async (t) => {
-	let request;
+	let request: any;
 	const fetcher = async (url, options) => {
 		request = { url, options, body: JSON.parse(options.body) };
 		return {

@@ -1,5 +1,5 @@
-import { describe, it, before, beforeEach, mock } from "node:test";
 import assert from "node:assert/strict";
+import { before, beforeEach, describe, it, mock } from "node:test";
 
 // Create native mock functions
 const mockCreateTask = mock.fn(async () => [{ name: "test-task-name" }]);
@@ -24,7 +24,7 @@ mock.module("../src/utils/logger.js", {
 });
 
 describe("Cloud Tasks Utility", () => {
-	let cloudTasks;
+	let cloudTasks: any;
 
 	before(async () => {
 		// Dynamically import the module AFTER setting up the native mocks

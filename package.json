@@ -9,7 +9,7 @@
 		"build": "tsc",
 		"start": "node dist/index.js",
 		"build:watch": "tsc -w",
-		"test": "node --experimental-test-module-mocks --test",
+		"test": "node --loader ts-node/esm --experimental-test-module-mocks --test",
 		"lint-fix": "npx @biomejs/biome format --write && npx @biomejs/biome lint --write"
 	},
 	"dependencies": {

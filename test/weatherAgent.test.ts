@@ -27,7 +27,7 @@ mock.module("../src/tools/weatherTool.js", {
 });
 
 describe("weatherAgent factory", () => {
-	let weatherAgent;
+	let weatherAgent: any;
 
 	before(async () => {
 		({ weatherAgent } = await import("../src/agents/weatherAgent.js"));

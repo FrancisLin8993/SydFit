@@ -1,11 +1,11 @@
-import { NodeSDK } from "@opentelemetry/sdk-node";
+import { LangfuseClient } from "@langfuse/client";
 import { LangfuseSpanProcessor } from "@langfuse/otel";
 import {
+	propagateAttributes,
 	startActiveObservation,
 	startObservation,
-	propagateAttributes,
 } from "@langfuse/tracing";
-import { LangfuseClient } from "@langfuse/client";
+import { NodeSDK } from "@opentelemetry/sdk-node";
 import { writeLog } from "../utils/logger.js";
 
 export const promptClient = new LangfuseClient();
@@ -48,8 +48,8 @@ export async function flushLangfuse() {
 }
 
 export {
+	isLangfuseEnabled,
+	propagateAttributes,
 	startActiveObservation,
 	startObservation,
-	propagateAttributes,
-	isLangfuseEnabled,
 };

@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { tool } from "@openai/agents";
+import { z } from "zod";
 import { addPreferenceToMemory } from "../services/memoryService.js";
 import { writeLog } from "../utils/logger.js";
 

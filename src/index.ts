@@ -1,19 +1,19 @@
-import {
-	flushLangfuse,
-	startActiveObservation,
-	propagateAttributes,
-} from "./services/langfuse.js";
-import { Runner } from "@openai/agents";
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
 import { swaggerUI } from "@hono/swagger-ui";
-import { enqueueSydFitTask } from "./services/googleCloudTask.js";
+import { Runner } from "@openai/agents";
+import { Hono } from "hono";
+import { trafficAgent } from "./agents/trafficAgent.js";
 import { triageAgent } from "./agents/triageAgent.js";
 import { weatherAgent } from "./agents/weatherAgent.js";
 import { sendBarkNotification } from "./services/bark.js";
+import { enqueueSydFitTask } from "./services/googleCloudTask.js";
+import {
+	flushLangfuse,
+	propagateAttributes,
+	startActiveObservation,
+} from "./services/langfuse.js";
 import { loadConfig } from "./utils/config.js";
 import { writeLog } from "./utils/logger.js";
-import { trafficAgent } from "./agents/trafficAgent.js";
 
 const app = new Hono();
 const config = loadConfig();
@@ -328,6 +328,7 @@ app.post("/api/cron", async (c) => {
 	await flushLangfuse();
 	return result;
 });
+
 export { app };
 
 if (import.meta.url === `file://${process.argv[1]}`) {

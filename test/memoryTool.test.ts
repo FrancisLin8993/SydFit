@@ -12,7 +12,7 @@ mock.module("../src/utils/logger.js", {
 });
 
 describe("memoryTool (get_user_memory)", () => {
-	let getUserMemoryTool;
+	let getUserMemoryTool: any;
 
 	before(async () => {
 		({ getUserMemoryTool } = await import("../src/tools/memoryTool.js"));

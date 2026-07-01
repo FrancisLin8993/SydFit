@@ -1,7 +1,7 @@
-import { z } from "zod";
 import { tool } from "@openai/agents";
-import { describeWeatherCode } from "../utils/weatherCodes.js";
+import { z } from "zod";
 import { writeLog } from "../utils/logger.js";
+import { describeWeatherCode } from "../utils/weatherCodes.js";
 
 const DEFAULT_COORDINATES = {
 	latitude: -33.928,
@@ -14,7 +14,7 @@ async function getCoordinatesFromLocation(locationQuery, fetcher = fetch) {
 
 	const params = new URLSearchParams({
 		name: locationQuery,
-		count: 1,
+		count: "1",
 		countryCode: "AU",
 		language: "en",
 		format: "json",
@@ -33,7 +33,7 @@ async function getCoordinatesFromLocation(locationQuery, fetcher = fetch) {
 			return {
 				latitude,
 				longitude,
-				name: `${name}${admin1 ? ", " + admin1 : ""}`.trim(),
+				name: `${name}${admin1 ? `, ${admin1}` : ""}`.trim(),
 			};
 		}
 	} catch (error) {
@@ -93,10 +93,10 @@ export const getWeatherTool = (config) =>
 					"The suburb or city to fetch weather for, e.g. 'Mascot' or 'Sydney CBD'.",
 				),
 		}),
-		execute: async ({ location }, _runContext, fetcher = fetch) => {
+		execute: async ({ location }) => {
 			const timezone = config.scheduleTimezone || "Australia/Sydney";
 
-			const coords = await getCoordinatesFromLocation(location, fetcher);
+			const coords = await getCoordinatesFromLocation(location);
 			writeLog(
 				"INFO",
 				`📍 [Location] Resolved to: ${coords.name} (${coords.latitude}, ${coords.longitude})`,
@@ -113,7 +113,7 @@ export const getWeatherTool = (config) =>
 				timezone: timezone,
 			});
 
-			const response = await fetcher(
+			const response = await fetch(
 				`https://api.open-meteo.com/v1/forecast?${params}`,
 			);
 

@@ -9,7 +9,7 @@ export async function getGcpAuthHeaders(targetAudience) {
 
 		const headers = await client.getRequestHeaders();
 
-		const plainHeaders = {};
+		const plainHeaders: Record<string, string> = {};
 		if (typeof headers.forEach === "function") {
 			headers.forEach((value, key) => {
 				plainHeaders[key] = value;

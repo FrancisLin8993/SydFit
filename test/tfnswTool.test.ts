@@ -14,7 +14,7 @@ mock.module("../src/utils/logger.js", {
 });
 
 describe("tfnswTool (get_tfnsw_alerts)", () => {
-	let getTfnswAlertsTool;
+	let getTfnswAlertsTool: any;
 	const originalFetch = global.fetch;
 
 	before(async () => {
@@ -31,7 +31,7 @@ describe("tfnswTool (get_tfnsw_alerts)", () => {
 	});
 
 	it("posts to the MCP alerts endpoint and returns parsed JSON", async () => {
-		let capturedRequest;
+		let capturedRequest: any;
 		global.fetch = mock.fn(async (url, options) => {
 			capturedRequest = { url, options };
 			return {

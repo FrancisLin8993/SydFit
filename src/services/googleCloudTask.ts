@@ -1,7 +1,7 @@
 import { CloudTasksClient } from "@google-cloud/tasks";
 import { writeLog } from "../utils/logger.js";
 
-let client;
+let client: CloudTasksClient;
 
 /**
  * Enqueues a background task to Google Cloud Tasks
@@ -31,7 +31,7 @@ export async function enqueueSydFitTask(config, endpoint, payload) {
 	const url = `${sydFitServiceUrl}${endpoint}`;
 	const task = {
 		httpRequest: {
-			httpMethod: "POST",
+			httpMethod: "POST" as const,
 			url: url,
 			headers: {
 				"Content-Type": "application/json",

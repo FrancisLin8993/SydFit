@@ -12,7 +12,7 @@ mock.module("../src/utils/logger.js", {
 });
 
 describe("locationMemoryTool (get_user_location_memory)", () => {
-	let getUserLocationMemoryTool;
+	let getUserLocationMemoryTool: any;
 
 	before(async () => {
 		({ getUserLocationMemoryTool } = await import(

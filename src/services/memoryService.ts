@@ -1,5 +1,5 @@
-import { getGcpAuthHeaders } from "./gcpAuth.js";
 import { writeLog } from "../utils/logger.js";
+import { getGcpAuthHeaders } from "./gcpAuth.js";
 
 /**
  * Add a memory (unchanged logic, but cleaner error handling)
