@@ -13,13 +13,11 @@ mock.module("@openai/agents", {
 	exports: { Agent: MockAgent },
 });
 
-const mockPromptGet = mock.fn(() => ({
-	compile: () => "You are the SydFit triage agent.",
-}));
+const mockGetPromptInstructions = mock.fn(
+	async () => "You are the SydFit triage agent.",
+);
 mock.module("../src/services/langfuse.js", {
-	exports: {
-		promptClient: { prompt: { get: mockPromptGet } },
-	},
+	exports: { getPromptInstructions: mockGetPromptInstructions },
 });
 
 const mockWriteLog = mock.fn();
@@ -80,6 +78,13 @@ describe("triageAgent factory", () => {
 		assert.deepEqual(
 			agent.handoffs.map((h) => h.name),
 			["sydney-traffic-agent", "sydney-weather-agent"],
+		);
+		// Regression guard: confirms the agent fetches its instructions via
+		// the resilient helper (with a fallback), not a raw promptClient call
+		// that would crash the server on a missing/mislabeled prompt.
+		assert.equal(
+			mockGetPromptInstructions.mock.calls[0].arguments[0],
+			"triage-agent",
 		);
 	});
 

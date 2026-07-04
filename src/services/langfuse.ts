@@ -47,6 +47,38 @@ export async function flushLangfuse() {
 	}
 }
 
+/**
+ * Fetches and compiles a Langfuse-hosted text prompt, falling back to a
+ * built-in default on any failure (missing prompt, no "production" label
+ * yet, network error, etc).
+ *
+ * Callers use this at module load time (top-level await) to build agent
+ * instructions. Without this fallback, a rejected fetch there fails the
+ * whole module import — which crashes the entire SydFit process at startup,
+ * not just the one agent, since index.ts imports every agent module
+ * directly. A missing/mislabeled prompt should degrade to the last-known
+ * default instructions, not take the whole app down.
+ */
+export async function getPromptInstructions(
+	name: string,
+	fallback: string,
+): Promise<string> {
+	try {
+		const prompt = await promptClient.prompt.get(name);
+		return prompt.compile();
+	} catch (error) {
+		writeLog(
+			"ERROR",
+			`[Langfuse] Failed to fetch prompt "${name}" — falling back to built-in default instructions`,
+			{
+				prompt: name,
+				error: error instanceof Error ? error.message : String(error),
+			},
+		);
+		return fallback;
+	}
+}
+
 export {
 	isLangfuseEnabled,
 	propagateAttributes,

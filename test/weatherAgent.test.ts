@@ -10,6 +10,13 @@ mock.module("@openai/agents", {
 	exports: { Agent: MockAgent },
 });
 
+const mockGetPromptInstructions = mock.fn(
+	async () => "You are a Sydney weather and clothing advisor.",
+);
+mock.module("../src/services/langfuse.js", {
+	exports: { getPromptInstructions: mockGetPromptInstructions },
+});
+
 const mockGetUserLocationMemoryTool = mock.fn((config) => ({
 	name: "get_user_location_memory",
 	config,
@@ -48,6 +55,13 @@ describe("weatherAgent factory", () => {
 		// answer directly instead of checking location/weather first — see
 		// weatherAgent.ts and the matching guard in trafficAgent.ts.
 		assert.equal(agent.modelSettings?.toolChoice, "required");
+		// Regression guard: confirms the agent fetches its instructions via
+		// the resilient helper (with a fallback), not a raw promptClient call
+		// that would crash the server on a missing/mislabeled prompt.
+		assert.equal(
+			mockGetPromptInstructions.mock.calls[0].arguments[0],
+			"weather-advice",
+		);
 	});
 
 	it("threads config through to both tool factories", () => {

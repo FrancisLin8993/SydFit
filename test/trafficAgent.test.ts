@@ -10,6 +10,13 @@ mock.module("@openai/agents", {
 	exports: { Agent: MockAgent },
 });
 
+const mockGetPromptInstructions = mock.fn(
+	async () => "You are a Sydney public transport assistant.",
+);
+mock.module("../src/services/langfuse.js", {
+	exports: { getPromptInstructions: mockGetPromptInstructions },
+});
+
 const mockGetUserTransitLinesTool = mock.fn((config) => ({
 	name: "get_user_transit_lines",
 	config,
@@ -52,6 +59,13 @@ describe("trafficAgent factory", () => {
 		// (e.g. "Alert") can lead the model to answer directly instead of
 		// checking transit preferences or alerts first — see trafficAgent.ts.
 		assert.equal(agent.modelSettings?.toolChoice, "required");
+		// Regression guard: confirms the agent fetches its instructions via
+		// the resilient helper (with a fallback), not a raw promptClient call
+		// that would crash the server on a missing/mislabeled prompt.
+		assert.equal(
+			mockGetPromptInstructions.mock.calls[0].arguments[0],
+			"traffic-advice",
+		);
 	});
 
 	it("threads config through to the transit-lines and alerts tool factories", () => {
