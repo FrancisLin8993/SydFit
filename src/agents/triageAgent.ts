@@ -1,28 +1,27 @@
 import { Agent } from "@openai/agents";
-import { getPromptInstructions } from "../services/langfuse.js";
 import { saveTransitLinesTool } from "../tools/saveTransitLinesTool.js";
 import { saveUserPreferenceTool } from "../tools/saveUserPreferenceTool.js";
-import { trafficAgent } from "./trafficAgent.js";
+import { getTransitDisruptionsTool } from "../tools/tfnswTool.js";
+import { loadPromptInstructions } from "../utils/prompts.js";
 import { weatherAgent } from "./weatherAgent.js";
 
-// Generic fallback, used only if the Langfuse-hosted "triage-agent" prompt
-// can't be fetched (missing, not yet labeled "production", network error,
-// etc). See getPromptInstructions for why this matters — without a
-// fallback, a failed fetch here crashes the entire server at startup. This
-// is deliberately short/generic rather than a full duplicate of the curated
-// Langfuse prompt, to avoid two copies drifting out of sync.
-const FALLBACK_INSTRUCTIONS =
-	"You are the front door for a Sydney-based personal assistant. For each message, decide whether the user wants you to remember a preference (call save_transit_lines for transit line preferences, save_preference for anything else), is asking about traffic/transit, or is asking about weather — then hand off to the matching specialist or use the matching tool.";
+const instructions = loadPromptInstructions("triage-agent");
 
-const instructions = await getPromptInstructions(
-	"triage-agent",
-	FALLBACK_INSTRUCTIONS,
-);
-
+// Traffic is a TOOL here, not a handoff: the whole traffic pipeline
+// (preferred lines + fetch + filter) is one deterministic tool call, so
+// there's no specialist conversation for a separate agent to own — triage
+// calls the tool and writes the briefing itself, saving a full LLM
+// round-trip per traffic query. Weather stays a handoff because its
+// specialist genuinely makes decisions across two dependent tool calls
+// (which location to use, then fetching weather for it).
 export const triageAgent = (config) =>
 	Agent.create({
 		name: "sydfit-triage",
 		instructions,
-		tools: [saveUserPreferenceTool(config), saveTransitLinesTool(config)],
-		handoffs: [trafficAgent(config), weatherAgent(config)],
+		tools: [
+			saveUserPreferenceTool(config),
+			saveTransitLinesTool(config),
+			getTransitDisruptionsTool(config),
+		],
+		handoffs: [weatherAgent(config)],
 	});

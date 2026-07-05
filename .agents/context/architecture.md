@@ -16,19 +16,25 @@
 
 ## Agent Architecture
 
-Three agents built on the OpenAI Agents SDK. All agent instructions are hosted in
-**Langfuse prompt management** (prompts: `triage-agent`, `traffic-advice`,
-`weather-advice`; fetched at startup from the `production` label via
-`getPromptInstructions()` in `src/services/langfuse.ts`, which falls back to short
-in-code generic instructions on any fetch failure rather than crashing the server).
-When code changes rename tools, the Langfuse-hosted prompts must be updated manually.
+Three agents built on the OpenAI Agents SDK. Agent instructions are
+**version-controlled markdown files in `src/prompts/`** (`triage-agent.md`,
+`traffic-advice.md`, `weather-advice.md`), loaded synchronously at module load via
+`loadPromptInstructions()` in `src/utils/prompts.ts` — NOT fetched from Langfuse.
+A missing file fails the boot loudly (deterministic, covered by tests — no fallback).
+`test/prompts.test.ts` drift-guards each prompt against the real tool names, so a
+tool rename without a matching prompt edit fails CI. The build step copies the
+`.md` files into `dist/` (`tsc` alone doesn't emit non-TS assets).
 
 - **sydfit-triage** (`src/agents/triageAgent.ts`)
   - Routes each incoming message: memory-save intent vs traffic vs weather.
   - Tools: `save_preference` (freeform preferences), `save_transit_lines`
-    (structured transit-line preference, zod-constrained to canonical line codes).
-  - Handoffs: `sydney-traffic-agent`, `sydney-weather-agent`.
+    (structured transit-line preference, zod-constrained to canonical line codes),
+    and `get_transit_disruptions` — traffic is a TOOL here, not a handoff, because
+    the whole traffic pipeline is one deterministic call; triage writes the traffic
+    briefing itself, saving an LLM round-trip on the /api/ask path.
+  - Handoffs: `sydney-weather-agent` only.
 - **sydney-traffic-agent** (`src/agents/trafficAgent.ts`)
+  - Used only by `/api/cron` (invoked directly, not via triage handoff).
   - Single merged tool `get_transit_disruptions` (`src/tools/tfnswTool.ts`): looks up
     the user's preferred lines from memory AND fetches TfNSW alerts concurrently
     (`Promise.all`), then filters alerts to those lines in code (word-boundary
@@ -69,8 +75,9 @@ actionable advice phrase.
   decommissioned (it was never actually MCP-protocol).
 - **Open-Meteo** (`src/tools/weatherTool.ts`): geocoding + 1-day forecast, keyless.
 - **Bark** (`src/services/bark.ts`): push notifications, body sent as `markdown`.
-- **Langfuse** (`src/services/langfuse.ts`): OTel-based tracing (enabled only when
-  keys present) + prompt management + `flushLangfuse()` before responses.
+- **Langfuse** (`src/services/langfuse.ts`): OTel-based tracing only (enabled when
+  keys present) + `flushLangfuse()` before responses. Prompt management is NOT
+  used — prompts are local files (see Agent Architecture).
 - **Google Cloud Tasks** (`src/services/googleCloudTask.ts`): enqueues
   `/api/ask` payloads to `/api/process-task` with the API key header passed through.
 - **OpenAI** via `openai` + `headroom-ai` wrapper (`src/services/openaiClient.ts`);
@@ -82,8 +89,9 @@ Auth middleware: `x-sydfit-token` header must equal `SYDFIT_API_KEY`
 (`/swagger` and `/doc` whitelisted).
 
 - `POST /api/ask` — enqueue query to Cloud Tasks, 202.
-- `POST /api/process-task` — run triage agent on queued query; Bark push titled by
-  which agent handled it (traffic/weather/memory).
+- `POST /api/process-task` — run triage agent on queued query; Bark push title
+  derived from the run: weather via `lastAgent`, traffic via a
+  `get_transit_disruptions` tool call in `newItems`, else memory.
 - `POST /api/cron` — morning briefing: weather + traffic agents run concurrently
   (`Promise.allSettled` — one failure doesn't cancel the other), two Bark pushes.
 - `GET /doc`, `GET /swagger` — OpenAPI JSON + Swagger UI.
@@ -97,6 +105,10 @@ Auth middleware: `x-sydfit-token` header must equal `SYDFIT_API_KEY`
   biome.json, tsconfig.json, Dockerfile, package.json
   src/
     index.ts                 # Hono app, auth middleware, routes
+    prompts/
+      triage-agent.md        # sydfit-triage instructions
+      traffic-advice.md      # sydney-traffic-agent instructions
+      weather-advice.md      # sydney-weather-agent instructions
     agents/
       triageAgent.ts         # sydfit-triage (tools + handoffs)
       trafficAgent.ts        # sydney-traffic-agent
@@ -114,11 +126,12 @@ Auth middleware: `x-sydfit-token` header must equal `SYDFIT_API_KEY`
       tfnsw.ts               # Direct TfNSW alerts client
       bark.ts                # Push notifications
       googleCloudTask.ts     # Cloud Tasks enqueuer
-      langfuse.ts            # Tracing + prompt fetching (with fallback)
+      langfuse.ts            # Tracing only (prompts are local files)
       openaiClient.ts        # OpenAI + headroom client
     utils/
       config.ts              # loadConfig()/loadConfigFromEnv()
       logger.ts              # GCP-structured JSON writeLog()
+      prompts.ts             # loadPromptInstructions() — reads src/prompts/*.md
       transitLines.ts        # Canonical lines (T1–T6, T8, T9, AIRPORT, LIGHTRAIL,
                              #   METRO), alias map, normalizeLine(), alertMentionsLine()
       weatherCodes.ts        # WMO code → description
@@ -133,7 +146,8 @@ Auth middleware: `x-sydfit-token` header must equal `SYDFIT_API_KEY`
   function — tests assert on the resolved error string, not rejections.
 - node:test `mockImplementationOnce()` without an explicit `onCall` index silently
   overwrites (not stacks) a previously queued one-shot — pass indices when queuing two.
-- Agent modules fetch prompts via top-level await at import time.
+- Agent modules load prompts synchronously at import time from src/prompts/*.md;
+  a prompt edit is a code change (commit + deploy), there is no hot-swap.
 - `matched_preferences` in tool output = which preferred lines actually had alert
   hits (canonical uppercase codes).
 

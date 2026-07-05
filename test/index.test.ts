@@ -135,6 +135,14 @@ describe("index.ts HTTP routes", () => {
 	});
 
 	it("processes a memory-path task directly handled by the triage agent", async () => {
+		mockRunnerRun.mock.mockImplementationOnce(async () => ({
+			finalOutput: "Got it, I'll remember that.",
+			lastAgent: { name: "sydfit-triage" },
+			newItems: [
+				{ type: "tool_call_item", rawItem: { name: "save_preference" } },
+			],
+		}));
+
 		const res = await app.request(
 			authedRequest("/api/process-task", { query: "remember I like T8" }),
 		);
@@ -147,10 +155,19 @@ describe("index.ts HTTP routes", () => {
 		assert.equal(notification.title, "🧠 SydFit Memory Sync");
 	});
 
-	it("titles the push notification for a traffic handoff", async () => {
+	it("titles the push notification for a traffic query answered via the disruptions tool", async () => {
+		// Traffic is a triage TOOL, not a handoff — the run ends with triage
+		// as lastAgent, and the title is derived from the tool having been
+		// called during the run.
 		mockRunnerRun.mock.mockImplementationOnce(async () => ({
 			finalOutput: "T8 delays until 5pm.",
-			lastAgent: { name: "sydney-traffic-agent" },
+			lastAgent: { name: "sydfit-triage" },
+			newItems: [
+				{
+					type: "tool_call_item",
+					rawItem: { name: "get_transit_disruptions" },
+				},
+			],
 		}));
 
 		await app.request(

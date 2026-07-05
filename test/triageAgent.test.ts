@@ -13,11 +13,11 @@ mock.module("@openai/agents", {
 	exports: { Agent: MockAgent },
 });
 
-const mockGetPromptInstructions = mock.fn(
-	async () => "You are the SydFit triage agent.",
+const mockLoadPromptInstructions = mock.fn(
+	() => "You are the SydFit triage agent.",
 );
-mock.module("../src/services/langfuse.js", {
-	exports: { getPromptInstructions: mockGetPromptInstructions },
+mock.module("../src/utils/prompts.js", {
+	exports: { loadPromptInstructions: mockLoadPromptInstructions },
 });
 
 const mockWriteLog = mock.fn();
@@ -41,12 +41,12 @@ mock.module("../src/tools/saveTransitLinesTool.js", {
 	exports: { saveTransitLinesTool: mockSaveTransitLinesTool },
 });
 
-const mockTrafficAgent = mock.fn((config) => ({
-	name: "sydney-traffic-agent",
+const mockGetTransitDisruptionsTool = mock.fn((config) => ({
+	name: "get_transit_disruptions",
 	config,
 }));
-mock.module("../src/agents/trafficAgent.js", {
-	exports: { trafficAgent: mockTrafficAgent },
+mock.module("../src/tools/tfnswTool.js", {
+	exports: { getTransitDisruptionsTool: mockGetTransitDisruptionsTool },
 });
 
 const mockWeatherAgent = mock.fn((config) => ({
@@ -64,31 +64,31 @@ describe("triageAgent factory", () => {
 		({ triageAgent } = await import("../src/agents/triageAgent.js"));
 	});
 
-	it("builds a sydfit-triage agent with both save tools and both specialist handoffs", () => {
+	it("builds a sydfit-triage agent with save + disruptions tools and the weather handoff", () => {
 		const config = { tfnswApiKey: "tfnsw-key" };
 		const agent = triageAgent(config);
 
 		assert.ok(agent instanceof MockAgent);
 		assert.equal(agent.name, "sydfit-triage");
 		assert.equal(agent.instructions, "You are the SydFit triage agent.");
+		// Traffic is a TOOL of triage, not a handoff — see triageAgent.ts.
 		assert.deepEqual(
 			agent.tools.map((t) => t.name),
-			["save_preference", "save_transit_lines"],
+			["save_preference", "save_transit_lines", "get_transit_disruptions"],
 		);
 		assert.deepEqual(
 			agent.handoffs.map((h) => h.name),
-			["sydney-traffic-agent", "sydney-weather-agent"],
+			["sydney-weather-agent"],
 		);
-		// Regression guard: confirms the agent fetches its instructions via
-		// the resilient helper (with a fallback), not a raw promptClient call
-		// that would crash the server on a missing/mislabeled prompt.
+		// Confirms the agent loads its instructions from the local prompt
+		// file (src/prompts/triage-agent.md), not Langfuse.
 		assert.equal(
-			mockGetPromptInstructions.mock.calls[0].arguments[0],
+			mockLoadPromptInstructions.mock.calls[0].arguments[0],
 			"triage-agent",
 		);
 	});
 
-	it("threads config through to both save tool factories", () => {
+	it("threads config through to all three tool factories", () => {
 		const config = { tfnswApiKey: "another-key" };
 		triageAgent(config);
 
@@ -98,6 +98,10 @@ describe("triageAgent factory", () => {
 		);
 		assert.equal(
 			mockSaveTransitLinesTool.mock.calls.at(-1).arguments[0],
+			config,
+		);
+		assert.equal(
+			mockGetTransitDisruptionsTool.mock.calls.at(-1).arguments[0],
 			config,
 		);
 	});

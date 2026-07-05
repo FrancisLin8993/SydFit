@@ -154,20 +154,26 @@ app.post("/api/process-task", async (c) => {
 					const aiReply = result.finalOutput;
 					const handledBy = result.lastAgent?.name || "sydfit-triage";
 
+					// Traffic is a triage TOOL (not a handoff), so a traffic query
+					// finishes with triage as the last agent — detect it by which
+					// tools were actually called during the run instead.
+					const calledTools = (result.newItems ?? [])
+						.filter((item) => item.type === "tool_call_item")
+						.map((item) => (item.rawItem as { name?: string })?.name);
+
 					// Push notification framing based on which agent/tool path
 					// actually produced the final response.
 					let pushTitle = "💬 SydFit Assistant";
 					let pushSubtitle = "Real-time Query";
 
-					if (handledBy === "sydney-traffic-agent") {
-						pushTitle = "🚆 Sydney Traffic Update";
-					} else if (handledBy === "sydney-weather-agent") {
+					if (handledBy === "sydney-weather-agent") {
 						pushTitle = "☀️ Mascot Outfit Suggestion";
 						pushSubtitle = "Today's weather-based recommendation";
+					} else if (calledTools.includes("get_transit_disruptions")) {
+						pushTitle = "🚆 Sydney Traffic Update";
 					} else {
-						// Triage agent handled it directly — this is the memory
-						// path (save_preference tool call), since traffic/weather
-						// always hand off to a specialist.
+						// Triage handled it without the traffic tool — the memory
+						// path (save_preference / save_transit_lines).
 						pushTitle = "🧠 SydFit Memory Sync";
 						pushSubtitle = "Personal Preference Logged";
 					}

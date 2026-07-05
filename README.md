@@ -5,7 +5,7 @@ SydFit is a serverless personal assistant designed for Sydney residents. It fetc
 ## Core Features
 
 * **Morning Briefing**: Automatically delivers a weather-based clothing recommendation and relevant Sydney transport alerts at 7:00 AM AEST/AEDT.
-* **Multi-Agent Workflow**: A triage agent (built on the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js)) routes each request — saving preferences via tools, or handing off to a traffic or weather specialist agent.
+* **Multi-Agent Workflow**: A triage agent (built on the [OpenAI Agents SDK](https://github.com/openai/openai-agents-js)) routes each request — saving preferences and answering traffic queries via tools, or handing off to the weather specialist agent.
 * **Memory Persistence**: Stores user preferences in the managed [Mem0 Platform](https://mem0.ai). Transit-line preferences are saved as structured metadata (canonical line codes like `T8`, `AIRPORT`), so alert filtering is exact matching rather than text guessing. An in-process LRU cache (30-min TTL, invalidated on writes) sits in front of memory searches.
 * **Direct TfNSW Integration**: Real-time transit alerts fetched straight from the TfNSW Open Data API and filtered to the user's preferred lines in code — the model only ever sees relevant alerts.
 * **Structured Logging**: GCP-compatible JSON logging for observability in production.
@@ -15,16 +15,16 @@ SydFit is a serverless personal assistant designed for Sydney residents. It fetc
 
 * **Language/Runtime**: TypeScript on Node.js 24+ (ESM), compiled with `tsc`.
 * **Infrastructure**: Google Cloud Run (deployed via GitHub Actions on push to `main`); Google Cloud Tasks for async background processing of `/api/ask` requests.
-* **Agents** (all instructions hosted in Langfuse prompt management, with in-code fallbacks):
-  * `sydfit-triage` — routes intent; tools: `save_preference`, `save_transit_lines`; hands off to the specialists below.
-  * `sydney-traffic-agent` — one merged `get_transit_disruptions` tool that looks up preferred lines and fetches + filters TfNSW alerts concurrently, in code.
+* **Agents** (instructions live in version-controlled markdown files under `src/prompts/`):
+  * `sydfit-triage` — routes intent; tools: `save_preference`, `save_transit_lines`, and `get_transit_disruptions` (looks up preferred lines and fetches + filters TfNSW alerts concurrently, in code — triage writes the traffic briefing itself); hands off to the weather specialist.
+  * `sydney-traffic-agent` — same `get_transit_disruptions` tool; used directly by the `/api/cron` morning briefing.
   * `sydney-weather-agent` — `get_user_location_memory` + `get_weather` (Open-Meteo, geocoded location with Mascot, NSW as default).
 * **External APIs**:
   * **OpenAI**: Powers all agents (default model `gpt-5.4-mini`, configurable via `OPENAI_MODEL`).
   * **Open-Meteo**: Weather data (geocoding + forecast, no API key required).
   * **TfNSW Open Data**: GTFS-realtime alerts v2, fetched as JSON directly.
   * **Mem0 Platform**: Managed long-term memory.
-  * **Langfuse**: LLM tracing and hosted prompt management.
+  * **Langfuse**: LLM tracing (prompts are local files, not Langfuse-hosted).
 
 ## Endpoints
 
@@ -67,12 +67,13 @@ All endpoints require the `x-sydfit-token` header (except `/doc` and `/swagger`)
 
 SydFit uses a structured logging utility (`src/utils/logger.ts`) that outputs JSON logs compatible with Google Cloud Logging. All logs contain a `severity`, `timestamp`, and relevant metadata, facilitating filtering and alerting in the Google Cloud operations console.
 
-## Tracing & Prompts (Langfuse)
+## Prompts
 
-SydFit integrates [Langfuse](https://langfuse.com) for LLM observability and prompt management:
+Agent instructions are version-controlled markdown files in `src/prompts/` (`triage-agent.md`, `traffic-advice.md`, `weather-advice.md`), loaded synchronously at startup — no network fetch, no drift between code and prompts (a prompt change and the tool rename it references land in the same commit). `test/prompts.test.ts` guards this: it asserts each prompt references its agent's real tool names. The build step copies the `.md` files into `dist/`.
 
-* **Tracing**: Each request (`/api/process-task`, `/api/cron`) is a trace with tags (`ask`, `cron`); agent runs, handoffs, and tool calls appear as nested spans with token usage and latencies. Traces are flushed before each response for reliable delivery in serverless environments.
-* **Prompts**: Agent instructions are hosted in Langfuse prompt management (`triage-agent`, `traffic-advice`, `weather-advice`, fetched at startup from the `production` label). If a prompt can't be fetched, the app falls back to short in-code default instructions instead of crashing — but keep the hosted prompts in sync with tool names when the code changes.
+## Tracing (Langfuse)
+
+SydFit integrates [Langfuse](https://langfuse.com) for LLM observability. Each request (`/api/process-task`, `/api/cron`) is a trace with tags (`ask`, `cron`); agent runs, handoffs, and tool calls appear as nested spans with token usage and latencies. Traces are flushed before each response for reliable delivery in serverless environments.
 
 **Setup:**
 
