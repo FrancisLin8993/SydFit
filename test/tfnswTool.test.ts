@@ -13,12 +13,14 @@ mock.module("../src/utils/logger.js", {
 	exports: { writeLog: mockWriteLog },
 });
 
-describe("tfnswTool (get_tfnsw_alerts)", () => {
-	let getTfnswAlertsTool: any;
+describe("tfnswTool (get_relevant_tfnsw_alerts)", () => {
+	let getRelevantTfnswAlertsTool: any;
 	const originalFetch = global.fetch;
 
 	before(async () => {
-		({ getTfnswAlertsTool } = await import("../src/tools/tfnswTool.js"));
+		({ getRelevantTfnswAlertsTool } = await import(
+			"../src/tools/tfnswTool.js"
+		));
 	});
 
 	beforeEach(() => {
@@ -30,7 +32,12 @@ describe("tfnswTool (get_tfnsw_alerts)", () => {
 		global.fetch = originalFetch;
 	});
 
-	it("posts to the MCP alerts endpoint and returns parsed JSON", async () => {
+	async function run(config, args) {
+		const tool = getRelevantTfnswAlertsTool(config);
+		return tool.invoke({}, JSON.stringify(args));
+	}
+
+	it("posts to the MCP alerts endpoint with the requested mode", async () => {
 		let capturedRequest: any;
 		global.fetch = mock.fn(async (url, options) => {
 			capturedRequest = { url, options };
@@ -40,12 +47,10 @@ describe("tfnswTool (get_tfnsw_alerts)", () => {
 			};
 		});
 
-		const tool = getTfnswAlertsTool({
-			mcpServerUrl: "https://mcp.test",
-			mcpAccessToken: "mcp-token",
-		});
-
-		const result = await tool.invoke({}, JSON.stringify({ mode: "train" }));
+		const result = await run(
+			{ mcpServerUrl: "https://mcp.test", mcpAccessToken: "mcp-token" },
+			{ mode: "train", preferredLines: ["T8"] },
+		);
 
 		assert.equal(capturedRequest.url, "https://mcp.test/alerts");
 		assert.equal(capturedRequest.options.method, "POST");
@@ -58,21 +63,23 @@ describe("tfnswTool (get_tfnsw_alerts)", () => {
 			method: "get_sydney_transport_alerts",
 			arguments: { mode: "train" },
 		});
-		assert.deepEqual(result, { mode: "train", alerts: [] });
+		assert.deepEqual(result, {
+			mode: "train",
+			relevant_alerts: [],
+			matched_preferences: [],
+		});
 	});
 
 	it("surfaces an error message when the MCP server responds with a non-ok status", async () => {
 		global.fetch = mock.fn(async () => ({ ok: false, status: 503 }));
 
-		const tool = getTfnswAlertsTool({
-			mcpServerUrl: "https://mcp.test",
-			mcpAccessToken: "mcp-token",
-		});
-
 		// FunctionTool.invoke swallows execute() errors via the SDK's default
 		// tool error function, resolving with a description instead of
 		// rejecting — so we assert on the resolved string, not a rejection.
-		const result = await tool.invoke({}, JSON.stringify({ mode: "bus" }));
+		const result = await run(
+			{ mcpServerUrl: "https://mcp.test", mcpAccessToken: "mcp-token" },
+			{ mode: "bus", preferredLines: ["T8"] },
+		);
 		assert.match(result, /TfNSW tool failed: 503/);
 	});
 
@@ -82,12 +89,95 @@ describe("tfnswTool (get_tfnsw_alerts)", () => {
 			json: async () => ({}),
 		}));
 
-		const tool = getTfnswAlertsTool({
-			mcpServerUrl: "https://mcp.test",
-			mcpAccessToken: "mcp-token",
+		const result = await run(
+			{ mcpServerUrl: "https://mcp.test", mcpAccessToken: "mcp-token" },
+			{ mode: "monorail", preferredLines: ["T8"] },
+		);
+		assert.match(result, /error occurred while running the tool/i);
+	});
+
+	describe("filtering", () => {
+		function withAlerts(alerts: unknown[]) {
+			global.fetch = mock.fn(async () => ({
+				ok: true,
+				json: async () => ({ mode: "train", alerts }),
+			}));
+		}
+
+		it("keeps only alerts matching preferred lines", async () => {
+			withAlerts([
+				{ title: "T8 Line Delay", description: "Trackwork on T8" },
+				{ title: "T2 Line Delay", description: "Signal fault on T2" },
+			]);
+
+			const result = await run(
+				{ mcpServerUrl: "https://mcp.test", mcpAccessToken: "mcp-token" },
+				{ mode: "train", preferredLines: ["T8"] },
+			);
+
+			assert.equal(result.relevant_alerts.length, 1);
+			assert.equal(result.relevant_alerts[0].title, "T8 Line Delay");
+			assert.deepEqual(result.matched_preferences, ["T8"]);
 		});
 
-		const result = await tool.invoke({}, JSON.stringify({ mode: "monorail" }));
-		assert.match(result, /error occurred while running the tool/i);
+		it("returns no matches and an empty matched_preferences list when nothing hits", async () => {
+			withAlerts([{ title: "L1 delay", description: "Track issue" }]);
+
+			const result = await run(
+				{ mcpServerUrl: "https://mcp.test", mcpAccessToken: "mcp-token" },
+				{ mode: "lightrail", preferredLines: ["T1"] },
+			);
+
+			assert.deepEqual(result.relevant_alerts, []);
+			assert.deepEqual(result.matched_preferences, []);
+		});
+
+		it("matches multiple preferred lines against alert text", async () => {
+			withAlerts([
+				{ title: "T4 delay", description: "Trackwork" },
+				{ title: "Airport Line closure", description: "Maintenance" },
+				{ title: "T3 delay", description: "Unrelated" },
+			]);
+
+			const result = await run(
+				{ mcpServerUrl: "https://mcp.test", mcpAccessToken: "mcp-token" },
+				{ mode: "train", preferredLines: ["T4", "AIRPORT"] },
+			);
+
+			assert.equal(result.relevant_alerts.length, 2);
+			assert.deepEqual(result.matched_preferences.sort(), ["AIRPORT", "T4"]);
+		});
+
+		it("silently ignores unknown/malformed line codes without crashing", async () => {
+			withAlerts([{ title: "T8 Line Delay", description: "Trackwork on T8" }]);
+
+			const result = await run(
+				{ mcpServerUrl: "https://mcp.test", mcpAccessToken: "mcp-token" },
+				{ mode: "train", preferredLines: ["NOT_A_REAL_LINE", "T8"] },
+			);
+
+			assert.equal(result.relevant_alerts.length, 1);
+			assert.deepEqual(result.matched_preferences, ["T8"]);
+		});
+
+		it("does not false-positive match T1 inside unrelated alert text", async () => {
+			// The old naive `content.includes("t1")` matcher (before
+			// transitLines.ts's word-boundary matching) would have wrongly
+			// matched "t1" inside "t19" here.
+			withAlerts([
+				{
+					title: "Replacement bus T19 diverted via Anzac Parade",
+					description: "Diversion in effect",
+				},
+			]);
+
+			const result = await run(
+				{ mcpServerUrl: "https://mcp.test", mcpAccessToken: "mcp-token" },
+				{ mode: "bus", preferredLines: ["T1"] },
+			);
+
+			assert.deepEqual(result.relevant_alerts, []);
+			assert.deepEqual(result.matched_preferences, []);
+		});
 	});
 });
