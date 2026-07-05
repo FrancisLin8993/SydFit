@@ -28,11 +28,11 @@ mock.module("../src/utils/logger.js", {
 describe("memoryService", () => {
 	let addPreferenceToMemory: any;
 	let getRelevantMemories: any;
+	let resetMemoryCacheForTests: any;
 
 	before(async () => {
-		({ addPreferenceToMemory, getRelevantMemories } = await import(
-			"../src/services/memoryService.js"
-		));
+		({ addPreferenceToMemory, getRelevantMemories, resetMemoryCacheForTests } =
+			await import("../src/services/memoryService.js"));
 	});
 
 	beforeEach(() => {
@@ -40,6 +40,10 @@ describe("memoryService", () => {
 		mockSearch.mock.resetCalls();
 		mockClientConstructor.mock.resetCalls();
 		mockWriteLog.mock.resetCalls();
+		// The search cache is a module-level singleton; reset it so tests
+		// reusing the same query string don't see a previous test's cached
+		// result instead of calling mem0 fresh.
+		resetMemoryCacheForTests();
 	});
 
 	describe("addPreferenceToMemory", () => {
@@ -190,6 +194,92 @@ describe("memoryService", () => {
 			);
 
 			assert.deepEqual(result.memories, []);
+		});
+
+		describe("caching", () => {
+			it("serves a repeated query from cache without calling mem0 again", async () => {
+				mockSearch.mock.mockImplementationOnce(async () => ({
+					results: [{ memory: "User takes T8", score: 0.9, created_at: "t1" }],
+				}));
+
+				const first = await getRelevantMemories(
+					{ mem0ApiKey: "test-key" },
+					"cached query",
+				);
+				const second = await getRelevantMemories(
+					{ mem0ApiKey: "test-key" },
+					"cached query",
+				);
+
+				assert.equal(mockSearch.mock.calls.length, 1);
+				assert.deepEqual(second.memories, first.memories);
+			});
+
+			it("calls mem0 separately for distinct queries", async () => {
+				mockSearch.mock.mockImplementation(async () => ({ results: [] }));
+
+				await getRelevantMemories({ mem0ApiKey: "test-key" }, "query one");
+				await getRelevantMemories({ mem0ApiKey: "test-key" }, "query two");
+
+				assert.equal(mockSearch.mock.calls.length, 2);
+			});
+
+			it("does not cache a failed search, so the next call retries mem0", async () => {
+				// Explicit onCall indices: mockImplementationOnce() calls without
+				// them silently overwrite each other's "next call" slot instead
+				// of stacking (see other test files in this suite for the same
+				// gotcha documented against node:test's mock API).
+				mockSearch.mock.mockImplementationOnce(async () => {
+					throw new Error("search failed");
+				}, 0);
+				mockSearch.mock.mockImplementationOnce(
+					async () => ({
+						results: [
+							{ memory: "User takes T8", score: 0.9, created_at: "t1" },
+						],
+					}),
+					1,
+				);
+
+				const first = await getRelevantMemories(
+					{ mem0ApiKey: "test-key" },
+					"retry query",
+				);
+				const second = await getRelevantMemories(
+					{ mem0ApiKey: "test-key" },
+					"retry query",
+				);
+
+				assert.equal(mockSearch.mock.calls.length, 2);
+				assert.equal(first.error, "search failed");
+				assert.equal(second.memories[0].text, "User takes T8");
+			});
+
+			it("invalidates the cache when a new preference is saved", async () => {
+				mockSearch.mock.mockImplementationOnce(async () => ({ results: [] }));
+
+				await getRelevantMemories(
+					{ mem0ApiKey: "test-key" },
+					"invalidation query",
+				);
+				assert.equal(mockSearch.mock.calls.length, 1);
+
+				await addPreferenceToMemory(
+					{ mem0ApiKey: "test-key" },
+					"User takes T8",
+				);
+
+				mockSearch.mock.mockImplementationOnce(async () => ({
+					results: [{ memory: "User takes T8", score: 0.9, created_at: "t1" }],
+				}));
+				const result = await getRelevantMemories(
+					{ mem0ApiKey: "test-key" },
+					"invalidation query",
+				);
+
+				assert.equal(mockSearch.mock.calls.length, 2);
+				assert.equal(result.memories[0]?.text, "User takes T8");
+			});
 		});
 	});
 });
