@@ -11,12 +11,12 @@ mock.module("../src/utils/logger.js", {
 	exports: { writeLog: mockWriteLog },
 });
 
-describe("transitLinesMemoryTool (get_user_transit_lines)", () => {
-	let getUserTransitLinesTool: any;
+describe("getUserTransitLines", () => {
+	let getUserTransitLines: any;
 
 	before(async () => {
-		({ getUserTransitLinesTool } = await import(
-			"../src/tools/transitLinesMemoryTool.js"
+		({ getUserTransitLines } = await import(
+			"../src/tools/transitLinesMemory.js"
 		));
 	});
 
@@ -36,11 +36,7 @@ describe("transitLinesMemoryTool (get_user_transit_lines)", () => {
 			],
 		}));
 
-		const tool = getUserTransitLinesTool({});
-		const result = await tool.invoke(
-			{},
-			JSON.stringify({ query: "transit lines" }),
-		);
+		const result = await getUserTransitLines({});
 
 		assert.deepEqual(result, ["T8", "AIRPORT"]);
 	});
@@ -58,11 +54,7 @@ describe("transitLinesMemoryTool (get_user_transit_lines)", () => {
 			],
 		}));
 
-		const tool = getUserTransitLinesTool({});
-		const result = await tool.invoke(
-			{},
-			JSON.stringify({ query: "transit lines" }),
-		);
+		const result = await getUserTransitLines({});
 
 		assert.deepEqual(result, ["T4"]);
 	});
@@ -72,11 +64,7 @@ describe("transitLinesMemoryTool (get_user_transit_lines)", () => {
 			memories: [],
 		}));
 
-		const tool = getUserTransitLinesTool({});
-		const result = await tool.invoke(
-			{},
-			JSON.stringify({ query: "transit lines" }),
-		);
+		const result = await getUserTransitLines({});
 
 		assert.deepEqual(result, []);
 	});
@@ -89,16 +77,25 @@ describe("transitLinesMemoryTool (get_user_transit_lines)", () => {
 			error: "partial failure",
 		}));
 
-		const tool = getUserTransitLinesTool({});
-		const result = await tool.invoke(
-			{},
-			JSON.stringify({ query: "transit lines" }),
-		);
+		const result = await getUserTransitLines({});
 
 		assert.deepEqual(result, ["T8"]);
 		const warningCall = mockWriteLog.mock.calls.find(
 			(c) => c.arguments[0] === "WARNING",
 		);
 		assert.ok(warningCall, "expected a WARNING log call");
+	});
+
+	it("passes the default query to the memory service", async () => {
+		mockGetRelevantMemories.mock.mockImplementationOnce(async () => ({
+			memories: [],
+		}));
+
+		await getUserTransitLines({ mem0ApiKey: "k" });
+
+		assert.match(
+			mockGetRelevantMemories.mock.calls[0].arguments[1],
+			/transit lines/i,
+		);
 	});
 });

@@ -7,56 +7,69 @@ import {
 	type CanonicalLine,
 	normalizeLine,
 } from "../utils/transitLines.js";
+import { getUserTransitLines } from "./transitLinesMemory.js";
 
-// Fetches TfNSW alerts for a mode AND filters them down to the user's
-// preferred lines in one tool call. This used to be two separate tools
-// (fetch, then a model-driven filter_relevant_alerts call) — but filtering
-// is a deterministic word-boundary match with no LLM judgment involved, so
-// routing it through the model just forced it to ingest the full unfiltered
-// alert payload and then regenerate it as tool-call arguments, adding tens
-// of thousands of wasted tokens (and several seconds of latency) per
-// request. Filtering here, in code, means the model only ever sees the
-// already-relevant alerts.
-export const getRelevantTfnswAlertsTool = (config) =>
-	tool({
-		name: "get_relevant_tfnsw_alerts",
-		description:
-			"Fetches real-time Transport for NSW (TfNSW) service alerts for a single transport mode and filters them down to only those relevant to the user's preferred transit lines. Call this once per relevant mode (e.g. once for 'train', once for 'lightrail') if the user commutes on multiple modes.",
-		parameters: z.object({
-			mode: z
-				.enum(["train", "metro", "lightrail", "bus", "ferry", "all"])
-				.describe("The transport mode to fetch alerts for."),
-			preferredLines: z
-				.array(z.string())
-				.describe(
-					"The user's preferred canonical transit line codes (e.g. ['T8', 'AIRPORT']), as returned by get_user_transit_lines.",
-				),
+interface TfnswAlert {
+	title?: string;
+	description?: string;
+	[key: string]: unknown;
+}
+
+/**
+ * Fetches raw TfNSW alerts for a single mode from the MCP server.
+ * "all" returns every mode's alerts in one call — which is what the tool
+ * below uses, so it can fetch alerts concurrently with the memory lookup
+ * instead of issuing one call per mode after the lines are known.
+ */
+async function fetchTfnswAlerts(config, mode: string): Promise<TfnswAlert[]> {
+	const fetchUrl = `${config.mcpServerUrl}/alerts`;
+
+	const response = await fetch(fetchUrl, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-Worker-Token": config.mcpAccessToken,
+			...(await getGcpAuthHeaders(config.mcpServerUrl)),
+		},
+		body: JSON.stringify({
+			method: "get_sydney_transport_alerts",
+			arguments: { mode },
 		}),
-		execute: async ({ mode, preferredLines }) => {
-			const mcpServerUrl = config.mcpServerUrl;
-			const fetchUrl = `${mcpServerUrl}/alerts`;
+	});
 
-			writeLog("INFO", "[Tool] Fetch TfNSW alerts", { mode });
+	if (!response.ok) {
+		throw new Error(`TfNSW tool failed: ${response.status}`);
+	}
 
-			const response = await fetch(fetchUrl, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"X-Worker-Token": config.mcpAccessToken,
-					...(await getGcpAuthHeaders(mcpServerUrl)),
-				},
-				body: JSON.stringify({
-					method: "get_sydney_transport_alerts",
-					arguments: { mode },
-				}),
-			});
+	const data = await response.json();
+	return Array.isArray(data?.alerts) ? data.alerts : [];
+}
 
-			if (!response.ok) {
-				throw new Error(`TfNSW tool failed: ${response.status}`);
-			}
-
-			const data = await response.json();
-			const alerts = Array.isArray(data?.alerts) ? data.alerts : [];
+// Single tool that runs the entire traffic pipeline in code: look up the
+// user's preferred lines from memory AND fetch current alerts concurrently,
+// then filter alerts down to those lines — all in one call, so the model
+// makes one tool call and gets back only the relevant disruptions.
+//
+// This replaces the old two-tool chain (get_user_transit_lines +
+// get_relevant_tfnsw_alerts). That chain forced an extra LLM round-trip: the
+// model had to go back to the model after the memory lookup just to issue
+// the alerts call with the lines as input. But the workflow never branches —
+// it's always lines -> alerts -> filter -> summarize — so orchestrating it
+// here removes a whole model round-trip and runs the two fetches in parallel.
+export const getTransitDisruptionsTool = (config) =>
+	tool({
+		name: "get_transit_disruptions",
+		description:
+			"Fetches the current TfNSW service disruptions relevant to the user's saved preferred transit lines, in one call. Returns the user's preferred lines, the filtered relevant alerts, and which of those lines actually have a disruption. Call this once; it handles looking up the user's lines and fetching + filtering alerts internally.",
+		parameters: z.object({}),
+		execute: async () => {
+			// Memory lookup and alert fetch have no dependency on each other
+			// (we fetch "all" modes and filter by line afterwards), so run them
+			// concurrently rather than lines-then-alerts.
+			const [preferredLines, alerts] = await Promise.all([
+				getUserTransitLines(config),
+				fetchTfnswAlerts(config, "all"),
+			]);
 
 			const normalizedLines = preferredLines
 				.map((line) => normalizeLine(line))
@@ -76,14 +89,14 @@ export const getRelevantTfnswAlertsTool = (config) =>
 				return hitLines.length > 0;
 			});
 
-			writeLog("INFO", "[Tool] Filtered TfNSW alerts", {
-				mode,
+			writeLog("INFO", "[Tool] Fetched transit disruptions", {
+				preferredLines,
 				totalAlerts: alerts.length,
 				relevantAlerts: relevantAlerts.length,
 			});
 
 			return {
-				mode,
+				preferred_lines: preferredLines,
 				relevant_alerts: relevantAlerts,
 				matched_preferences: Array.from(matchedPreferences),
 			};
