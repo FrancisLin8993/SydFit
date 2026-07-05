@@ -6,7 +6,7 @@ SydFit is a serverless personal assistant designed for Sydney residents. It fetc
 
 * **Morning Briefing**: Automatically delivers a weather-based clothing recommendation and relevant Sydney transport alerts at 7:00 AM AEST/AEDT.
 * **AI-Powered Routing**: Uses an intent router to classify user requests between "weather", "traffic" (transit) and "memory" modes.
-* **Memory Persistence**: Maintains historical user transit preferences using [Mem0](https://mem0.ai) and [Qdrant](https://qdrant.tech) to provide personalized travel advice.
+* **Memory Persistence**: Maintains historical user transit preferences using the managed [Mem0 Platform](https://mem0.ai) to provide personalized travel advice.
 * **Structured Logging**: Implements GCP-compatible structured logging for improved observability and debugging in production.
 * **Push Notifications**: Delivers content to iPhone via [Bark](https://bark.day.app).
 
@@ -27,7 +27,7 @@ SydFit is a serverless personal assistant designed for Sydney residents. It fetc
 * `OPENAI_API_KEY`: API key for OpenAI.
 * `BARK_DEVICE_KEY`: Key from the Bark iOS app.
 * `SYDFIT_API_KEY`: A custom API key to secure your SydFit endpoints.
-* `MEM0_API_URL` & `MEM0_ACCESS_TOKEN`: Configuration for your Mem0 memory service.
+* `MEM0_API_KEY`: API key for the [Mem0 Platform](https://app.mem0.ai) (managed).
 * `MCP_SERVER_URL` & `MCP_ACCESS_TOKEN`: Connection details for the TfNSW MCP server.
 * `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`: Langfuse credentials for LLM tracing (optional — tracing is disabled when keys are absent).
 

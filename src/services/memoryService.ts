@@ -1,8 +1,38 @@
+import { MemoryClient } from "mem0ai";
 import { writeLog } from "../utils/logger.js";
-import { getGcpAuthHeaders } from "./gcpAuth.js";
+
+// The SDK's shipped `Memory` type declares camelCase fields (e.g.
+// `createdAt`), but search()'s implementation returns the raw REST response
+// verbatim (verified by reading the installed package's source) — the
+// actual wire shape is snake_case, matching Mem0's public API docs. This
+// local type reflects runtime reality, not the (inaccurate) shipped types.
+interface RawMem0SearchResult {
+	memory?: string;
+	score?: number;
+	created_at?: string;
+	metadata?: Record<string, unknown> | null;
+}
+
+let client: MemoryClient | undefined;
+
+function getClient(apiKey: string): MemoryClient {
+	if (!client) {
+		client = new MemoryClient({ apiKey });
+	}
+	return client;
+}
 
 /**
- * Add a memory (unchanged logic, but cleaner error handling)
+ * Add a memory via the Mem0 Platform API.
+ *
+ * NOTE: Platform's add() queues extraction asynchronously — the underlying
+ * endpoint returns `{status: "PENDING", event_id}` immediately, not a
+ * confirmation that the memory is indexed/searchable yet (verified directly
+ * against the installed SDK's implementation, not just its — slightly
+ * stale — type declarations). We deliberately don't poll for completion;
+ * this app's usage pattern is "save now, read later," not same-turn
+ * read-after-write, so eventual consistency is an acceptable trade for not
+ * adding polling complexity.
  */
 export async function addPreferenceToMemory(
 	config,
@@ -10,38 +40,18 @@ export async function addPreferenceToMemory(
 	metadata?: Record<string, unknown>,
 ) {
 	try {
-		const mem0ApiUrl = config.mem0ApiUrl;
-		if (!mem0ApiUrl)
-			throw new Error("MEM0_API_URL is not configured in config");
-
-		const mem0AccessToken = config.mem0AccessToken;
-		if (!mem0AccessToken)
-			throw new Error("MEM0_ACCESS_TOKEN is missing for memory service");
-
-		const gcpAuthHeaders = await getGcpAuthHeaders(mem0ApiUrl);
-
-		const response = await fetch(`${mem0ApiUrl}/memory/add`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"x-worker-token": mem0AccessToken,
-				...gcpAuthHeaders,
-			},
-			body: JSON.stringify({
-				text,
-				user_id: "francis",
-				...(metadata ? { metadata } : {}),
-			}),
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(
-				`[Memory service] Add memory failed: ${response.status} - ${errorText}`,
-			);
+		if (!config.mem0ApiKey) {
+			throw new Error("MEM0_API_KEY is not configured in config");
 		}
 
-		writeLog("INFO", "[Memory] Successfully added memory", { text });
+		const mem0 = getClient(config.mem0ApiKey);
+
+		await mem0.add([{ role: "user", content: text }], {
+			userId: "francis",
+			...(metadata ? { metadata } : {}),
+		});
+
+		writeLog("INFO", "[Memory] Queued memory add", { text });
 
 		return { success: true };
 	} catch (error) {
@@ -58,63 +68,23 @@ export async function addPreferenceToMemory(
  */
 export async function getRelevantMemories(config, query) {
 	try {
-		if (!config.mem0ApiUrl) {
+		if (!config.mem0ApiKey) {
 			return {
 				memories: [],
-				error: "mem0ApiUrl not configured",
+				error: "mem0ApiKey not configured",
 			};
 		}
 
-		const start = performance.now();
+		const mem0 = getClient(config.mem0ApiKey);
 
-		console.time("gcp-auth");
-
-		const gcpAuthHeaders = await getGcpAuthHeaders(config.mem0ApiUrl);
-
-		console.timeEnd("gcp-auth");
-
-		console.time("fetch-from-mem0");
-
-		const workerToken = process.env.MEM0_ACCESS_TOKEN;
-		const searchEndpoint = `${config.mem0ApiUrl}/memory/search`;
-
-		const response = await fetch(searchEndpoint, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"X-Worker-Token": workerToken?.trim() || "",
-				...gcpAuthHeaders,
-			},
-			body: JSON.stringify({
-				context: query,
-				user_id: "francis",
-				limit: 5,
-			}),
+		const response = await mem0.search(query, {
+			filters: { user_id: "francis" },
+			topK: 5,
 		});
 
-		if (!response.ok) {
-			const errorText = await response.text();
+		const memoriesArray = (response?.results ??
+			[]) as unknown as RawMem0SearchResult[];
 
-			writeLog("ERROR", "[Memory] Search failed", {
-				status: response.status,
-				error: errorText,
-			});
-
-			return {
-				memories: [],
-				error: errorText,
-			};
-		}
-
-		console.timeEnd("fetch-from-mem0");
-
-		console.log("TOTAL", performance.now() - start);
-
-		const responseData = await response.json();
-
-		const memoriesArray = responseData?.memories?.results || [];
-
-		// 🔥 IMPORTANT: preserve structure
 		const memories = memoriesArray
 			.map((m) => ({
 				text: m.memory,

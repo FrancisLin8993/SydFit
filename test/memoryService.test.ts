@@ -1,11 +1,23 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, describe, it, mock } from "node:test";
+import { before, beforeEach, describe, it, mock } from "node:test";
 
-const mockGetGcpAuthHeaders = mock.fn(async () => ({
-	Authorization: "Bearer gcp-token",
-}));
-mock.module("../src/services/gcpAuth.js", {
-	exports: { getGcpAuthHeaders: mockGetGcpAuthHeaders },
+const mockAdd = mock.fn(async () => ({ status: "PENDING", event_id: "evt-1" }));
+const mockSearch = mock.fn(async () => ({ results: [] }));
+const mockClientConstructor = mock.fn();
+
+class MockMemoryClient {
+	constructor(opts: any) {
+		mockClientConstructor(opts);
+	}
+	add(...args: any[]) {
+		return mockAdd(...args);
+	}
+	search(...args: any[]) {
+		return mockSearch(...args);
+	}
+}
+mock.module("mem0ai", {
+	exports: { MemoryClient: MockMemoryClient },
 });
 
 const mockWriteLog = mock.fn();
@@ -16,8 +28,6 @@ mock.module("../src/utils/logger.js", {
 describe("memoryService", () => {
 	let addPreferenceToMemory: any;
 	let getRelevantMemories: any;
-	const originalFetch = global.fetch;
-	const originalToken = process.env.MEM0_ACCESS_TOKEN;
 
 	before(async () => {
 		({ addPreferenceToMemory, getRelevantMemories } = await import(
@@ -26,136 +36,99 @@ describe("memoryService", () => {
 	});
 
 	beforeEach(() => {
-		mockGetGcpAuthHeaders.mock.resetCalls();
+		mockAdd.mock.resetCalls();
+		mockSearch.mock.resetCalls();
+		mockClientConstructor.mock.resetCalls();
 		mockWriteLog.mock.resetCalls();
 	});
 
-	after(() => {
-		global.fetch = originalFetch;
-		process.env.MEM0_ACCESS_TOKEN = originalToken;
-	});
-
 	describe("addPreferenceToMemory", () => {
-		it("fails fast when mem0ApiUrl is not configured", async (_t) => {
+		it("fails fast when mem0ApiKey is not configured", async () => {
 			const result = await addPreferenceToMemory({}, "User likes T8");
 			assert.deepEqual(result, {
 				success: false,
-				error: "MEM0_API_URL is not configured in config",
+				error: "MEM0_API_KEY is not configured in config",
 			});
+			assert.equal(mockAdd.mock.calls.length, 0);
 		});
 
-		it("fails fast when mem0AccessToken is missing", async () => {
+		it("constructs the client with the configured API key and adds the message", async () => {
 			const result = await addPreferenceToMemory(
-				{ mem0ApiUrl: "https://mem0.test" },
-				"User likes T8",
-			);
-			assert.deepEqual(result, {
-				success: false,
-				error: "MEM0_ACCESS_TOKEN is missing for memory service",
-			});
-		});
-
-		it("posts the preference text and merges GCP auth headers", async () => {
-			let captured: any;
-			global.fetch = mock.fn(async (url, options) => {
-				captured = { url, options };
-				return { ok: true };
-			});
-
-			const result = await addPreferenceToMemory(
-				{
-					mem0ApiUrl: "https://mem0.test",
-					mem0AccessToken: "mem0-token",
-				},
+				{ mem0ApiKey: "test-key" },
 				"User likes T8",
 			);
 
+			assert.equal(
+				mockClientConstructor.mock.calls[0].arguments[0].apiKey,
+				"test-key",
+			);
+			assert.deepEqual(mockAdd.mock.calls[0].arguments[0], [
+				{ role: "user", content: "User likes T8" },
+			]);
+			assert.deepEqual(mockAdd.mock.calls[0].arguments[1], {
+				userId: "francis",
+			});
 			assert.deepEqual(result, { success: true });
-			assert.equal(captured.url, "https://mem0.test/memory/add");
-			assert.equal(captured.options.headers["x-worker-token"], "mem0-token");
-			assert.equal(captured.options.headers.Authorization, "Bearer gcp-token");
-			assert.deepEqual(JSON.parse(captured.options.body), {
-				text: "User likes T8",
-				user_id: "francis",
-			});
 		});
 
-		it("returns success:false with the response details on a failed request", async () => {
-			global.fetch = mock.fn(async () => ({
-				ok: false,
-				status: 502,
-				text: async () => "upstream down",
-			}));
-
-			const result = await addPreferenceToMemory(
-				{ mem0ApiUrl: "https://mem0.test", mem0AccessToken: "mem0-token" },
-				"User likes T8",
-			);
-
-			assert.equal(result.success, false);
-			assert.match(result.error, /502/);
-			assert.match(result.error, /upstream down/);
-		});
-
-		it("includes metadata in the request body when provided", async () => {
-			let captured: any;
-			global.fetch = mock.fn(async (url, options) => {
-				captured = { url, options };
-				return { ok: true };
-			});
-
+		it("includes metadata in the add call when provided", async () => {
 			await addPreferenceToMemory(
-				{ mem0ApiUrl: "https://mem0.test", mem0AccessToken: "mem0-token" },
+				{ mem0ApiKey: "test-key" },
 				"User's preferred transit lines: T8.",
 				{ type: "transit_lines", lines: ["T8"] },
 			);
 
-			assert.deepEqual(JSON.parse(captured.options.body), {
-				text: "User's preferred transit lines: T8.",
-				user_id: "francis",
+			assert.deepEqual(mockAdd.mock.calls[0].arguments[1], {
+				userId: "francis",
 				metadata: { type: "transit_lines", lines: ["T8"] },
+			});
+		});
+
+		it("returns success:false when the SDK call throws", async () => {
+			mockAdd.mock.mockImplementationOnce(async () => {
+				throw new Error("mem0 platform unreachable");
+			});
+
+			const result = await addPreferenceToMemory(
+				{ mem0ApiKey: "test-key" },
+				"User likes T8",
+			);
+
+			assert.deepEqual(result, {
+				success: false,
+				error: "mem0 platform unreachable",
 			});
 		});
 	});
 
 	describe("getRelevantMemories", () => {
-		beforeEach(() => {
-			process.env.MEM0_ACCESS_TOKEN = "  env-token  ";
-		});
-
-		it("short-circuits when mem0ApiUrl is not configured", async () => {
+		it("short-circuits when mem0ApiKey is not configured", async () => {
 			const result = await getRelevantMemories({}, "transit preferences");
 			assert.deepEqual(result, {
 				memories: [],
-				error: "mem0ApiUrl not configured",
+				error: "mem0ApiKey not configured",
 			});
+			assert.equal(mockSearch.mock.calls.length, 0);
 		});
 
-		it("maps and filters search results, trimming the worker token header", async () => {
-			let captured: any;
-			global.fetch = mock.fn(async (url, options) => {
-				captured = { url, options };
-				return {
-					ok: true,
-					json: async () => ({
-						memories: {
-							results: [
-								{ memory: "User takes T8", score: 0.9, created_at: "t1" },
-								{ memory: "", score: 0.1, created_at: "t2" },
-								{ memory: "Prefers window seat", score: 0.7 },
-							],
-						},
-					}),
-				};
-			});
+		it("searches scoped to the francis user and maps/filters results", async () => {
+			mockSearch.mock.mockImplementationOnce(async () => ({
+				results: [
+					{ memory: "User takes T8", score: 0.9, created_at: "t1" },
+					{ memory: "", score: 0.1, created_at: "t2" },
+					{ memory: "Prefers window seat", score: 0.7 },
+				],
+			}));
 
 			const result = await getRelevantMemories(
-				{ mem0ApiUrl: "https://mem0.test" },
+				{ mem0ApiKey: "test-key" },
 				"transit preferences",
 			);
 
-			assert.equal(captured.url, "https://mem0.test/memory/search");
-			assert.equal(captured.options.headers["X-Worker-Token"], "env-token");
+			assert.deepEqual(mockSearch.mock.calls[0].arguments, [
+				"transit preferences",
+				{ filters: { user_id: "francis" }, topK: 5 },
+			]);
 			assert.deepEqual(result.memories, [
 				{ text: "User takes T8", score: 0.9, timestamp: "t1", metadata: null },
 				{
@@ -169,24 +142,19 @@ describe("memoryService", () => {
 		});
 
 		it("surfaces metadata on results that include it", async () => {
-			global.fetch = mock.fn(async () => ({
-				ok: true,
-				json: async () => ({
-					memories: {
-						results: [
-							{
-								memory: "User's preferred transit lines: T8.",
-								score: 0.95,
-								created_at: "t1",
-								metadata: { type: "transit_lines", lines: ["T8"] },
-							},
-						],
+			mockSearch.mock.mockImplementationOnce(async () => ({
+				results: [
+					{
+						memory: "User's preferred transit lines: T8.",
+						score: 0.95,
+						created_at: "t1",
+						metadata: { type: "transit_lines", lines: ["T8"] },
 					},
-				}),
+				],
 			}));
 
 			const result = await getRelevantMemories(
-				{ mem0ApiUrl: "https://mem0.test" },
+				{ mem0ApiKey: "test-key" },
 				"transit lines",
 			);
 
@@ -200,19 +168,28 @@ describe("memoryService", () => {
 			]);
 		});
 
-		it("returns an empty memories list and the error text on a failed search", async () => {
-			global.fetch = mock.fn(async () => ({
-				ok: false,
-				status: 500,
-				text: async () => "search failed",
-			}));
+		it("returns an empty memories list and the error message on a failed search", async () => {
+			mockSearch.mock.mockImplementationOnce(async () => {
+				throw new Error("search failed");
+			});
 
 			const result = await getRelevantMemories(
-				{ mem0ApiUrl: "https://mem0.test" },
+				{ mem0ApiKey: "test-key" },
 				"transit preferences",
 			);
 
 			assert.deepEqual(result, { memories: [], error: "search failed" });
+		});
+
+		it("tolerates a missing results envelope", async () => {
+			mockSearch.mock.mockImplementationOnce(async () => ({}));
+
+			const result = await getRelevantMemories(
+				{ mem0ApiKey: "test-key" },
+				"transit preferences",
+			);
+
+			assert.deepEqual(result.memories, []);
 		});
 	});
 });

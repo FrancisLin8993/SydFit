@@ -10,7 +10,7 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
 		BARK_SERVER_URL: "https://example.com///",
 		SYDFIT_API_KEY: "test-sydfit-key",
 		MCP_ACCESS_TOKEN: "test-mcp-access-key",
-		MEM0_ACCESS_TOKEN: "test-mem0-access-key",
+		MEM0_API_KEY: "test-mem0-api-key",
 		GCP_PROJECT_ID: "test-project-id",
 		GCP_LOCATION: "australia-east",
 		GCP_QUEUE_NAME: "sydfit-queue",
@@ -29,8 +29,7 @@ test("loadConfigFromEnv applies defaults and trims Bark server URL", () => {
 		barkGroup: "Weather",
 		barkLevel: "active",
 		scheduleTimezone: "Australia/Sydney",
-		mem0ApiUrl: "",
-		mem0AccessToken: "test-mem0-access-key",
+		mem0ApiKey: "test-mem0-api-key",
 		mcpServerUrl: undefined,
 		mcpAccessToken: "test-mcp-access-key",
 		gcpProjectId: "test-project-id",
@@ -52,14 +51,14 @@ test("loadConfigFromEnv uses optional overrides", () => {
 		BARK_GROUP: "Morning",
 		BARK_LEVEL: "timeSensitive",
 		SCHEDULE_TIMEZONE: "Pacific/Auckland",
-		MEM0_API_URL: "https://mem0-gcp-run.net////",
+		MEM0_API_KEY: "override-mem0-key",
 	});
 
 	assert.equal(config.openaiModel, "model-x");
 	assert.equal(config.barkGroup, "Morning");
 	assert.equal(config.barkLevel, "timeSensitive");
 	assert.equal(config.scheduleTimezone, "Pacific/Auckland");
-	assert.equal(config.mem0ApiUrl, "https://mem0-gcp-run.net");
+	assert.equal(config.mem0ApiKey, "override-mem0-key");
 });
 
 test("loadConfigFromEnv reports missing required values", () => {
