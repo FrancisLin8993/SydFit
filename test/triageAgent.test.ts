@@ -65,7 +65,7 @@ describe("triageAgent factory", () => {
 	});
 
 	it("builds a sydfit-triage agent with both save tools and both specialist handoffs", () => {
-		const config = { mcpServerUrl: "https://mcp.test" };
+		const config = { tfnswApiKey: "tfnsw-key" };
 		const agent = triageAgent(config);
 
 		assert.ok(agent instanceof MockAgent);
@@ -89,7 +89,7 @@ describe("triageAgent factory", () => {
 	});
 
 	it("threads config through to both save tool factories", () => {
-		const config = { mcpServerUrl: "https://another.test" };
+		const config = { tfnswApiKey: "another-key" };
 		triageAgent(config);
 
 		assert.equal(

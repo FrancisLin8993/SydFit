@@ -17,7 +17,7 @@ SydFit is a serverless personal assistant designed for Sydney residents. It fetc
 * **External APIs**:
 * **OpenAI**: Used for clothing recommendations and intent classification.
 * **Open-Meteo**: Provides local weather data for Mascot, NSW.
-* **Transport for NSW (TfNSW)**: Accessed via a dedicated MCP (Model Context Protocol) server for real-time transit alerts.
+* **Transport for NSW (TfNSW)**: Real-time transit alerts fetched directly from the TfNSW Open Data API (GTFS-realtime alerts v2, JSON format).
 
 
 
@@ -28,7 +28,7 @@ SydFit is a serverless personal assistant designed for Sydney residents. It fetc
 * `BARK_DEVICE_KEY`: Key from the Bark iOS app.
 * `SYDFIT_API_KEY`: A custom API key to secure your SydFit endpoints.
 * `MEM0_API_KEY`: API key for the [Mem0 Platform](https://app.mem0.ai) (managed).
-* `MCP_SERVER_URL` & `MCP_ACCESS_TOKEN`: Connection details for the TfNSW MCP server.
+* `TFNSW_API_KEY`: API key for the [TfNSW Open Data](https://opendata.transport.nsw.gov.au) realtime alerts API.
 * `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`: Langfuse credentials for LLM tracing (optional — tracing is disabled when keys are absent).
 
 

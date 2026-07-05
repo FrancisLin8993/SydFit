@@ -1,6 +1,6 @@
 import { tool } from "@openai/agents";
 import { z } from "zod";
-import { getGcpAuthHeaders } from "../services/gcpAuth.js";
+import { fetchTfnswAlerts } from "../services/tfnsw.js";
 import { writeLog } from "../utils/logger.js";
 import {
 	alertMentionsLine,
@@ -8,42 +8,6 @@ import {
 	normalizeLine,
 } from "../utils/transitLines.js";
 import { getUserTransitLines } from "./transitLinesMemory.js";
-
-interface TfnswAlert {
-	title?: string;
-	description?: string;
-	[key: string]: unknown;
-}
-
-/**
- * Fetches raw TfNSW alerts for a single mode from the MCP server.
- * "all" returns every mode's alerts in one call — which is what the tool
- * below uses, so it can fetch alerts concurrently with the memory lookup
- * instead of issuing one call per mode after the lines are known.
- */
-async function fetchTfnswAlerts(config, mode: string): Promise<TfnswAlert[]> {
-	const fetchUrl = `${config.mcpServerUrl}/alerts`;
-
-	const response = await fetch(fetchUrl, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"X-Worker-Token": config.mcpAccessToken,
-			...(await getGcpAuthHeaders(config.mcpServerUrl)),
-		},
-		body: JSON.stringify({
-			method: "get_sydney_transport_alerts",
-			arguments: { mode },
-		}),
-	});
-
-	if (!response.ok) {
-		throw new Error(`TfNSW tool failed: ${response.status}`);
-	}
-
-	const data = await response.json();
-	return Array.isArray(data?.alerts) ? data.alerts : [];
-}
 
 // Single tool that runs the entire traffic pipeline in code: look up the
 // user's preferred lines from memory AND fetch current alerts concurrently,

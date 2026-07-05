@@ -69,8 +69,7 @@ jobs:
             BARK_GROUP=Weather
             BARK_LEVEL=active
             SCHEDULE_TIMEZONE=Australia/Sydney
-            MCP_SERVER_URL=${{ secrets.MCP_SERVER_URL }}
-            MCP_ACCESS_TOKEN=${{ secrets.MCP_ACCESS_TOKEN }}
+            TFNSW_API_KEY=${{ secrets.TFNSW_API_KEY }}
             MEM0_API_KEY=${{ secrets.MEM0_API_KEY }}
             SYDFIT_API_KEY=${{ secrets.SYDFIT_API_KEY }}
             GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}

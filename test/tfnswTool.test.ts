@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, describe, it, mock } from "node:test";
+import { before, beforeEach, describe, it, mock } from "node:test";
 
-const mockGetGcpAuthHeaders = mock.fn(async () => ({
-	Authorization: "Bearer test",
-}));
-mock.module("../src/services/gcpAuth.js", {
-	exports: { getGcpAuthHeaders: mockGetGcpAuthHeaders },
+const mockFetchTfnswAlerts = mock.fn(async () => [] as unknown[]);
+mock.module("../src/services/tfnsw.js", {
+	exports: { fetchTfnswAlerts: mockFetchTfnswAlerts },
 });
 
 const mockGetUserTransitLines = mock.fn(async () => [] as string[]);
@@ -20,33 +18,22 @@ mock.module("../src/utils/logger.js", {
 
 describe("tfnswTool (get_transit_disruptions)", () => {
 	let getTransitDisruptionsTool: any;
-	const originalFetch = global.fetch;
 
 	before(async () => {
 		({ getTransitDisruptionsTool } = await import("../src/tools/tfnswTool.js"));
 	});
 
 	beforeEach(() => {
-		mockGetGcpAuthHeaders.mock.resetCalls();
+		mockFetchTfnswAlerts.mock.resetCalls();
 		mockGetUserTransitLines.mock.resetCalls();
 		mockWriteLog.mock.resetCalls();
 	});
 
-	after(() => {
-		global.fetch = originalFetch;
-	});
-
-	const config = {
-		mcpServerUrl: "https://mcp.test",
-		mcpAccessToken: "mcp-token",
-	};
+	const config = { tfnswApiKey: "tfnsw-key" };
 
 	function withLinesAndAlerts(lines: string[], alerts: unknown[]) {
 		mockGetUserTransitLines.mock.mockImplementationOnce(async () => lines);
-		global.fetch = mock.fn(async () => ({
-			ok: true,
-			json: async () => ({ alerts }),
-		}));
+		mockFetchTfnswAlerts.mock.mockImplementationOnce(async () => alerts);
 	}
 
 	async function run() {
@@ -54,27 +41,16 @@ describe("tfnswTool (get_transit_disruptions)", () => {
 		return tool.invoke({}, JSON.stringify({}));
 	}
 
-	it("fetches the 'all' mode alerts from the MCP endpoint with auth headers", async () => {
-		let capturedRequest: any;
-		mockGetUserTransitLines.mock.mockImplementationOnce(async () => ["T8"]);
-		global.fetch = mock.fn(async (url, options) => {
-			capturedRequest = { url, options };
-			return { ok: true, json: async () => ({ alerts: [] }) };
-		});
+	it("fetches all-mode alerts via the tfnsw service with the agent config", async () => {
+		withLinesAndAlerts(["T8"], []);
 
 		await run();
 
-		assert.equal(capturedRequest.url, "https://mcp.test/alerts");
-		assert.equal(capturedRequest.options.method, "POST");
-		assert.equal(
-			capturedRequest.options.headers["X-Worker-Token"],
-			"mcp-token",
-		);
-		assert.equal(capturedRequest.options.headers.Authorization, "Bearer test");
-		assert.deepEqual(JSON.parse(capturedRequest.options.body), {
-			method: "get_sydney_transport_alerts",
-			arguments: { mode: "all" },
-		});
+		assert.equal(mockFetchTfnswAlerts.mock.calls.length, 1);
+		assert.deepEqual(mockFetchTfnswAlerts.mock.calls[0].arguments, [
+			config,
+			"all",
+		]);
 	});
 
 	it("returns preferred lines, filtered alerts, and matched preferences", async () => {
@@ -154,9 +130,11 @@ describe("tfnswTool (get_transit_disruptions)", () => {
 		assert.deepEqual(result.matched_preferences, []);
 	});
 
-	it("surfaces an error message when the MCP server responds with a non-ok status", async () => {
+	it("surfaces an error message when the alerts fetch fails", async () => {
 		mockGetUserTransitLines.mock.mockImplementationOnce(async () => ["T8"]);
-		global.fetch = mock.fn(async () => ({ ok: false, status: 503 }));
+		mockFetchTfnswAlerts.mock.mockImplementationOnce(async () => {
+			throw new Error("TfNSW tool failed: 503");
+		});
 
 		// FunctionTool.invoke swallows execute() errors via the SDK's default
 		// tool error function, resolving with a description instead of

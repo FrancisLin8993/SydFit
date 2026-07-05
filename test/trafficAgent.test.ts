@@ -33,7 +33,7 @@ describe("trafficAgent factory", () => {
 	});
 
 	it("builds a sydney-traffic-agent with the merged disruptions tool", () => {
-		const config = { mcpServerUrl: "https://mcp.test" };
+		const config = { tfnswApiKey: "tfnsw-key" };
 		const agent = trafficAgent(config);
 
 		assert.ok(agent instanceof MockAgent);
@@ -57,7 +57,7 @@ describe("trafficAgent factory", () => {
 	});
 
 	it("threads config through to the disruptions tool factory", () => {
-		const config = { mcpServerUrl: "https://another.test" };
+		const config = { tfnswApiKey: "another-key" };
 		trafficAgent(config);
 
 		assert.equal(
